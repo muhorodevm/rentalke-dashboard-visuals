@@ -88,8 +88,11 @@ const SystemHealth: React.FC = () => {
                 </div>
                 <Progress
                   value={item.value}
-                  className="h-2"
-                  indicatorClassName={cn(getStatusColor(item.value))}
+                  className={cn("h-2", {
+                    "bg-secondary [&>div]:bg-destructive": item.value < 50,
+                    "bg-secondary [&>div]:bg-amber-500": item.value >= 50 && item.value < 70,
+                    "bg-secondary [&>div]:bg-rentalke-green": item.value >= 70
+                  })}
                 />
               </motion.div>
             ))}
