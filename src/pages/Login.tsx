@@ -1,165 +1,130 @@
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+const Login: React.FC = () => {
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate login delay
+
+    // Simulate API call
     setTimeout(() => {
-      // Simple validation
-      if (!email || !password) {
+      setIsLoading(false);
+      if (email === "alex@gmail.com" && password === "1234") {
+        toast({
+          title: "Login Successful",
+          description: "Welcome back to RentalKE admin dashboard.",
+        });
+        navigate("/");
+      } else {
         toast({
           variant: "destructive",
           title: "Login Failed",
-          description: "Please enter both email and password.",
+          description: "Invalid email or password. Please try again.",
         });
-        setIsLoading(false);
-        return;
       }
-      
-      // For demo, accept any credentials
-      toast({
-        title: "Login Successful",
-        description: "Welcome to RentalKE Dashboard!",
-      });
-      
-      navigate('/');
-      setIsLoading(false);
-    }, 1500);
+    }, 800);
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="sm:mx-auto sm:w-full sm:max-w-md"
+        className="w-full max-w-md"
       >
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-rentalke-blue flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-            RK
-          </div>
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">
-          Sign in to RentalKE
-        </h2>
-        <p className="mt-2 text-center text-sm text-muted-foreground">
-          Enter your credentials to access the admin dashboard
-        </p>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md"
-      >
-        <div className="glass-card py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium">
-                Email address
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="pl-10"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-2">
+              <img 
+                src="/placeholder.svg" 
+                alt="RentalKE Logo" 
+                className="h-12 w-auto" 
+              />
             </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-2xl font-bold">RentalKE Admin</CardTitle>
+            <CardDescription>
+              Enter your credentials to access the dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
                 </div>
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  className="pl-10"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
+              </div>
+              <div className="space-y-2">
+                <div className="relative">
+                  <LockKeyhole className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-muted-foreground hover:text-foreground focus:outline-none"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-5 w-5 text-muted-foreground" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5 text-muted-foreground" />
                     )}
-                  </button>
+                  </Button>
+                </div>
+                <div className="flex items-center justify-end">
+                  <a
+                    href="#"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </a>
                 </div>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-rentalke-blue hover:text-rentalke-blue/80">
-                  Forgot your password?
-                </a>
-              </div>
-            </div>
-
-            <div>
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-rentalke-blue hover:bg-rentalke-blue/90"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4">
+            <div className="text-center text-sm text-muted-foreground">
+              <span>© 2024 RentalKE. All rights reserved.</span>
             </div>
-          </form>
-        </div>
+          </CardFooter>
+        </Card>
       </motion.div>
     </div>
   );

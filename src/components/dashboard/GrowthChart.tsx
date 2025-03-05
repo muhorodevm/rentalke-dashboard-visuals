@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   AreaChart,
   Area,
@@ -12,7 +12,6 @@ import {
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { monthlyGrowthData } from '@/data/dummyData';
-import { useTheme } from '@/context/ThemeContext';
 import {
   Card,
   CardContent,
@@ -28,12 +27,12 @@ import {
 } from '@/components/ui/tabs';
 
 const GrowthChart: React.FC = () => {
-  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState('monthly');
   
   // Chart colors
   const managerColor = '#0068D9';
   const clientColor = '#66BB6A';
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -134,14 +133,14 @@ const GrowthChart: React.FC = () => {
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={theme === 'dark' ? '#333' : '#eee'}
+                  stroke={isDarkMode ? '#333' : '#eee'}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="month"
                   tick={{ fontSize: 12 }}
                   tickLine={false}
-                  axisLine={{ stroke: theme === 'dark' ? '#444' : '#ddd' }}
+                  axisLine={{ stroke: isDarkMode ? '#444' : '#ddd' }}
                 />
                 <YAxis
                   tick={{ fontSize: 12 }}

@@ -24,12 +24,6 @@ const SystemHealth: React.FC = () => {
     }
   };
   
-  const getStatusColor = (value: number) => {
-    if (value < 50) return 'bg-destructive';
-    if (value < 70) return 'bg-amber-500';
-    return 'bg-rentalke-green';
-  };
-  
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
