@@ -44,6 +44,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
@@ -59,7 +65,10 @@ import {
   UserX,
   Filter,
   RefreshCw,
-  Download
+  Download,
+  Users,
+  UserCheck,
+  Clock
 } from 'lucide-react';
 
 // Mock data for users
@@ -118,6 +127,24 @@ const mockUsers = [
     avatar: 'https://ui-avatars.com/api/?name=Sarah+Davis&background=8B5CF6&color=fff',
     lastActive: '2023-06-05T13:20:00'
   },
+  {
+    id: '7',
+    name: 'David Wilson',
+    email: 'david.wilson@example.com',
+    role: 'Admin',
+    status: 'Active',
+    avatar: 'https://ui-avatars.com/api/?name=David+Wilson&background=3B82F6&color=fff',
+    lastActive: '2023-06-14T18:30:00'
+  },
+  {
+    id: '8',
+    name: 'Jennifer Lee',
+    email: 'jennifer.lee@example.com',
+    role: 'Manager',
+    status: 'Active',
+    avatar: 'https://ui-avatars.com/api/?name=Jennifer+Lee&background=10B981&color=fff',
+    lastActive: '2023-06-13T09:15:00'
+  },
 ];
 
 const UserManagement: React.FC = () => {
@@ -126,6 +153,7 @@ const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState('');
+  const [activeUserTab, setActiveUserTab] = useState("all");
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -134,11 +162,35 @@ const UserManagement: React.FC = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const admins = users.filter(user => user.role === 'Admin');
+  const managers = users.filter(user => user.role === 'Manager');
+  const clients = users.filter(user => user.role === 'Client');
+  
+  const getFilteredUsers = () => {
+    let filtered = users;
+    
+    // Filter by tab (role)
+    if (activeUserTab === "admins") {
+      filtered = admins;
+    } else if (activeUserTab === "managers") {
+      filtered = managers;
+    } else if (activeUserTab === "clients") {
+      filtered = clients;
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(user => 
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  };
+  
+  const filteredUsers = getFilteredUsers();
   
   const handleAddUser = () => {
     if (!newUser.name || !newUser.email || !newUser.role) {
@@ -265,7 +317,7 @@ const UserManagement: React.FC = () => {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
@@ -357,6 +409,65 @@ const UserManagement: React.FC = () => {
         </div>
       </div>
       
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Summary Cards */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Users</p>
+                <h3 className="text-2xl font-bold mt-1">{users.length}</h3>
+              </div>
+              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <Users className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Admins</p>
+                <h3 className="text-2xl font-bold mt-1">{admins.length}</h3>
+              </div>
+              <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <ShieldCheck className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Managers</p>
+                <h3 className="text-2xl font-bold mt-1">{managers.length}</h3>
+              </div>
+              <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserCog className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Clients</p>
+                <h3 className="text-2xl font-bold mt-1">{clients.length}</h3>
+              </div>
+              <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center">
+                <UserCheck className="h-6 w-6 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
@@ -381,6 +492,44 @@ const UserManagement: React.FC = () => {
         </CardHeader>
         
         <CardContent>
+          <Tabs 
+            defaultValue="all" 
+            value={activeUserTab}
+            onValueChange={setActiveUserTab}
+            className="mb-6"
+          >
+            <TabsList>
+              <TabsTrigger value="all" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                All Users
+                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
+                  {users.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="admins" className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                Admins
+                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
+                  {admins.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="managers" className="flex items-center gap-2">
+                <UserCog className="h-4 w-4" />
+                Managers
+                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
+                  {managers.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="clients" className="flex items-center gap-2">
+                <UserCheck className="h-4 w-4" />
+                Clients
+                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
+                  {clients.length}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
           <Table>
             <TableCaption>A list of users in the system.</TableCaption>
             <TableHeader>
@@ -393,96 +542,113 @@ const UserManagement: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback>
-                          {user.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
+              {filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6">
+                    <div className="flex flex-col items-center gap-2">
+                      <Users className="h-8 w-8 text-muted-foreground" />
+                      <p className="font-medium">No users found</p>
+                      <p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {getRoleBadge(user.role)}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(user.status)}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {formatDate(user.lastActive)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit User
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                        <DropdownMenuItem 
-                          onClick={() => handleRoleChange(user.id, 'Admin')}
-                          disabled={user.role === 'Admin'}
-                        >
-                          <ShieldCheck className="mr-2 h-4 w-4" />
-                          Make Admin
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleRoleChange(user.id, 'Manager')}
-                          disabled={user.role === 'Manager'}
-                        >
-                          <UserCog className="mr-2 h-4 w-4" />
-                          Make Manager
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleRoleChange(user.id, 'Client')}
-                          disabled={user.role === 'Client'}
-                        >
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Make Client
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Change Status</DropdownMenuLabel>
-                        <DropdownMenuItem 
-                          onClick={() => handleStatusChange(user.id, 'Active')}
-                          disabled={user.status === 'Active'}
-                        >
-                          <ShieldCheck className="mr-2 h-4 w-4" />
-                          Activate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleStatusChange(user.id, 'Suspended')}
-                          disabled={user.status === 'Suspended'}
-                        >
-                          <ShieldAlert className="mr-2 h-4 w-4" />
-                          Suspend
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => handleDeleteUser(user.id)}
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar} alt={user.name} />
+                          <AvatarFallback>
+                            {user.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{user.name}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {getRoleBadge(user.role)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(user.status)}
+                        {user.status === 'Suspended' && (
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {formatDate(user.lastActive)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit User
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                          <DropdownMenuItem 
+                            onClick={() => handleRoleChange(user.id, 'Admin')}
+                            disabled={user.role === 'Admin'}
+                          >
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            Make Admin
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleRoleChange(user.id, 'Manager')}
+                            disabled={user.role === 'Manager'}
+                          >
+                            <UserCog className="mr-2 h-4 w-4" />
+                            Make Manager
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleRoleChange(user.id, 'Client')}
+                            disabled={user.role === 'Client'}
+                          >
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Make Client
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                          <DropdownMenuItem 
+                            onClick={() => handleStatusChange(user.id, 'Active')}
+                            disabled={user.status === 'Active'}
+                          >
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            Activate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleStatusChange(user.id, 'Suspended')}
+                            disabled={user.status === 'Suspended'}
+                          >
+                            <ShieldAlert className="mr-2 h-4 w-4" />
+                            Suspend
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => handleDeleteUser(user.id)}
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Delete User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
