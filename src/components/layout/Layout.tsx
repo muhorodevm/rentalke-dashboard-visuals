@@ -6,6 +6,7 @@ import Topbar from './Topbar';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,9 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
+  
+  // Use the scroll to top hook
+  useScrollToTop();
   
   // Toggle sidebar collapsed state
   const toggleSidebar = () => {
