@@ -21,6 +21,8 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   User, 
   Bell, 
