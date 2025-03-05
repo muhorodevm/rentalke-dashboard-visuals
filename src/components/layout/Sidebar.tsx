@@ -4,10 +4,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, LogOut, 
-  HelpCircle
+  HelpCircle, Home, BarChart3, MessageSquare,
+  Settings, Bell, Users, User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { navigationItems } from '@/data/dummyData';
 import { useToast } from '@/hooks/use-toast';
 
 interface SidebarProps {
@@ -18,6 +18,16 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   const location = useLocation();
   const { toast } = useToast();
+  
+  const navigationItems = [
+    { name: 'Dashboard', path: '/', icon: Home },
+    { name: 'Analytics', path: '/analytics', icon: BarChart3 },
+    { name: 'Messages', path: '/messages', icon: MessageSquare },
+    { name: 'Notifications', path: '/notifications', icon: Bell },
+    { name: 'User Management', path: '/user-management', icon: Users },
+    { name: 'Profile', path: '/profile', icon: User },
+    { name: 'Settings', path: '/settings', icon: Settings },
+  ];
   
   const handleLogout = () => {
     toast({
@@ -34,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   
   return (
     <motion.aside
-      className="fixed left-0 top-0 bottom-0 h-screen bg-sidebar z-30 border-r"
+      className="fixed left-0 top-0 bottom-0 h-screen bg-sidebar z-40 border-r"
       initial="expanded"
       animate={isCollapsed ? 'collapsed' : 'expanded'}
       variants={sidebarVariants}
@@ -118,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                 </motion.span>
               )}
             </Link>
-            <button onClick={handleLogout} className="sidebar-item w-full text-left">
+            <Link to="/login" className="sidebar-item w-full text-left">
               <LogOut size={20} />
               {!isCollapsed && (
                 <motion.span
@@ -130,7 +140,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                   Logout
                 </motion.span>
               )}
-            </button>
+            </Link>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Bell, Moon, Sun, MessageSquare } from 'lucide-react';
 import { userProfile, notificationsData } from '@/data/dummyData';
 import { Button } from '@/components/ui/button';
@@ -33,9 +34,9 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 w-full h-16 bg-background border-b px-5",
+        "fixed top-0 right-0 z-30 h-16 bg-background border-b px-5",
         "transition-all duration-300",
-        isSidebarCollapsed ? "ml-20" : "ml-[260px]"
+        isSidebarCollapsed ? "left-20" : "left-[260px]"
       )}
     >
       <div className="h-full flex items-center justify-between">
@@ -68,9 +69,9 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
           
           {/* Messages */}
           <Button variant="ghost" size="icon" className="topbar-icon-btn" asChild>
-            <a href="/messages">
+            <Link to="/messages">
               <MessageSquare size={18} />
-            </a>
+            </Link>
           </Button>
           
           {/* Notifications dropdown */}
@@ -126,12 +127,12 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <a 
-                  href="/notifications" 
+                <Link 
+                  to="/notifications" 
                   className="justify-center text-sm text-center py-1.5 cursor-pointer"
                 >
                   View all notifications
-                </a>
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -159,10 +160,16 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/profile">Profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings">Settings</Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/login">Logout</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

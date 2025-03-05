@@ -12,6 +12,9 @@ import Login from "./pages/Login";
 import Analytics from "./pages/Analytics";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
+import UserManagement from "./pages/UserManagement";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +31,9 @@ const App = () => (
             <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
             <Route path="/messages" element={<Layout><Messages /></Layout>} />
             <Route path="/settings" element={<Layout><Settings /></Layout>} />
+            <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
+            <Route path="/user-management" element={<Layout><UserManagement /></Layout>} />
+            <Route path="/profile" element={<Layout><Profile /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

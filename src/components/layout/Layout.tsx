@@ -35,6 +35,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         return 'Payments';
       case '/settings':
         return 'Settings';
+      case '/notifications':
+        return 'Notifications';
+      case '/user-management':
+        return 'User Management';
       default:
         return 'Dashboard';
     }
@@ -57,7 +61,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <Topbar isSidebarCollapsed={isSidebarCollapsed} />
         
-        <main className="px-6 py-6">
+        <main className="px-6 py-6 mt-16">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
