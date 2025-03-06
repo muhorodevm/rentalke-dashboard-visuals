@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estate Creation Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .coordinates {
+            display: flex;
+            gap: 10px;
+        }
+        .coordinates .form-group {
+            flex: 1;
+        }
+        .features-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .feature-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .feature-input input {
+            flex: 1;
+        }
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .feature-tag {
+            background-color: #e0e0e0;
+            padding: 5px 10px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .remove-tag {
+            cursor: pointer;
+            color: #666;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .image-preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .image-preview {
+            position: relative;
+            aspect-ratio: 1;
+        }
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .remove-image {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Create New Estate</h1>
+        <form id="estateForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">Estate Name:</label>
+                <input type="text" id="name" name="name" required minlength="2">
+            </div>
+
+            <div class="form-group">
+                <label for="noOfBuildings">Number of Buildings:</label>
+                <input type="number" id="noOfBuildings" name="noOfBuildings" required min="1">
+            </div>
+
+            <div class="coordinates">
+                <div class="form-group">
+                    <label for="latitude">Latitude:</label>
+                    <input type="number" id="latitude" name="latitude" required step="any" min="-90" max="90">
+                </div>
+                <div class="form-group">
+                    <label for="longitude">Longitude:</label>
+                    <input type="number" id="longitude" name="longitude" required step="any" min="-180" max="180">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="county">County:</label>
+                <input type="text" id="county" name="county" required minlength="2">
+            </div>
+
+            <div class="form-group">
+                <label for="subcounty">Sub-County:</label>
+                <input type="text" id="subcounty" name="subcounty" required minlength="2">
+            </div>
+
+            <div class="features-container">
+                <label>Estate Features:</label>
+                <div class="feature-input">
+                    <input type="text" id="estateFeature" placeholder="Add estate feature">
+                    <button type="button" onclick="addFeature('estate')">Add</button>
+                </div>
+                <div id="estateFeatures" class="feature-tags"></div>
+            </div>
+
+            <div class="features-container">
+                <label>Custom Features:</label>
+                <div class="feature-input">
+                    <input type="text" id="customFeature" placeholder="Add custom feature">
+                    <button type="button" onclick="addFeature('custom')">Add</button>
+                </div>
+                <div id="customFeatures" class="feature-tags"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <textarea id="description" name="description" rows="4"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="images">Estate Images:</label>
+                <input type="file" id="images" name="images" accept="image/*" multiple required>
+                <div id="imagePreview" class="image-preview-container"></div>
+            </div>
+
+            <button type="submit">Create Estate</button>
+        </form>
+
+        <div id="response" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        let estateFeatures = [];
+        let customFeatures = [];
+        let selectedImages = [];
+
+        function addFeature(type) {
+            const input = document.getElementById(`${type}Feature`);
+            const value = input.value.trim();
+            if (!value) return;
+
+            const features = type === 'estate' ? estateFeatures : customFeatures;
+            if (!features.includes(value)) {
+                features.push(value);
+                updateFeatureTags(type);
+            }
+            input.value = '';
+        }
+
+        function removeFeature(type, feature) {
+            const features = type === 'estate' ? estateFeatures : customFeatures;
+            const index = features.indexOf(feature);
+            if (index > -1) {
+                features.splice(index, 1);
+                updateFeatureTags(type);
+            }
+        }
+
+        function updateFeatureTags(type) {
+            const container = document.getElementById(`${type}Features`);
+            const features = type === 'estate' ? estateFeatures : customFeatures;
+            
+            container.innerHTML = features.map(feature => `
+                <span class="feature-tag">
+                    ${feature}
+                    <span class="remove-tag" onclick="removeFeature('${type}', '${feature}')">&times;</span>
+                </span>
+            `).join('');
+        }
+
+        document.getElementById('images').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML += `
+                        <div class="image-preview">
+                            <img src="${e.target.result}" alt="Preview">
+                            <span class="remove-image" onclick="removeImage(${index})">&times;</span>
+                        </div>
+                    `;
+                }
+                reader.readAsDataURL(file);
+            });
+            
+            selectedImages = files;
+        });
+
+        function removeImage(index) {
+            const preview = document.getElementById('imagePreview');
+            const previewItems = preview.getElementsByClassName('image-preview');
+            if (previewItems[index]) {
+                previewItems[index].remove();
+            }
+        }
+
+        document.getElementById('estateForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Convert form data to match the schema
+            const estateData = {
+                name: document.getElementById('name').value,
+                noOfBuildings: parseInt(document.getElementById('noOfBuildings').value),
+                latitude: parseFloat(document.getElementById('latitude').value),
+                longitude: parseFloat(document.getElementById('longitude').value),
+                county: document.getElementById('county').value,
+                subcounty: document.getElementById('subcounty').value,
+                estateFeatures: estateFeatures,
+                customFeatures: customFeatures,
+                description: document.getElementById('description').value || undefined
+            };
+
+            // Client-side validation
+            if (!estateData.name || estateData.name.length < 2) {
+                alert('Estate name must be at least 2 characters');
+                return;
+            }
+
+            if (isNaN(estateData.noOfBuildings) || estateData.noOfBuildings <= 0) {
+                alert('Number of buildings must be a positive number');
+                return;
+            }
+
+            if (isNaN(estateData.latitude) || estateData.latitude < -90 || estateData.latitude > 90) {
+                alert('Latitude must be between -90 and 90');
+                return;
+            }
+
+            if (isNaN(estateData.longitude) || estateData.longitude < -180 || estateData.longitude > 180) {
+                alert('Longitude must be between -180 and 180');
+                return;
+            }
+
+            if (!estateData.county || estateData.county.length < 2) {
+                alert('County name must be at least 2 characters');
+                return;
+            }
+
+            if (!estateData.subcounty || estateData.subcounty.length < 2) {
+                alert('Sub-county name must be at least 2 characters');
+                return;
+            }
+
+            try {
+                // First, upload images
+                const imageInput = document.getElementById('images');
+                const imageUrls = [];
+                
+                if (imageInput.files.length > 0) {
+                    const imageFormData = new FormData();
+                    Array.from(imageInput.files).forEach(file => {
+                        imageFormData.append('images', file);
+                    });
+
+                    // Upload images first
+                    const imageUploadResponse = await fetch('http://localhost:8080/api/v1/properties/upload-images', {
+                        method: 'POST',
+                        body: imageFormData,
+                        headers: {
+                            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbTdkeXc2NzEwMDAyNzRnNXl5cDJ1YXp6Iiwicm9sZSI6Ik1BTkFHRVIiLCJpYXQiOjE3NDAwOTM3NzYsImV4cCI6MTc0MDY5ODU3Nn0.07VE6x958kxROEia7ZTWsicAsqKjGFkN8njTvHOaR44'
+                        }
+                    });
+
+                    if (!imageUploadResponse.ok) {
+                        throw new Error('Failed to upload images');
+                    }
+
+                    const imageData = await imageUploadResponse.json();
+                    imageUrls.push(...imageData.urls);
+                }
+
+                // Add image URLs to estate data
+                estateData.images = imageUrls;
+
+                // Then create estate with image URLs
+                const response = await fetch('http://localhost:8080/api/v1/properties/manager/estate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbTdkeXc2NzEwMDAyNzRnNXl5cDJ1YXp6Iiwicm9sZSI6Ik1BTkFHRVIiLCJpYXQiOjE3NDAwOTM3NzYsImV4cCI6MTc0MDY5ODU3Nn0.07VE6x958kxROEia7ZTWsicAsqKjGFkN8njTvHOaR44'
+                    },
+                    body: JSON.stringify(estateData)
+                });
+                
+                const data = await response.json();
+                document.getElementById('response').innerHTML = `
+                    <pre style="background: #f0f0f0; padding: 10px; border-radius: 4px;">
+                        ${JSON.stringify(data, null, 2)}
+                    </pre>
+                `;
+                
+                if (response.ok) {
+                    alert('Estate created successfully!');
+                    this.reset();
+                    document.getElementById('imagePreview').innerHTML = '';
+                    estateFeatures = [];
+                    customFeatures = [];
+                    updateFeatureTags('estate');
+                    updateFeatureTags('custom');
+                } else {
+                    alert('Error creating estate: ' + (data.message || JSON.stringify(data.errors)));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('response').innerHTML = `
+                    <pre style="background: #fff0f0; padding: 10px; border-radius: 4px; color: red;">
+                        ${error.toString()}
+                    </pre>
+                `;
+                alert('Error creating estate. Please check the console for details.');
+            }
+        });
+    </script>
+</body>
+</html>

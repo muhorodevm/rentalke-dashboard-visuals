@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit Creation Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .features-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .feature-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .feature-input input {
+            flex: 1;
+        }
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .feature-tag {
+            background-color: #e0e0e0;
+            padding: 5px 10px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .remove-tag {
+            cursor: pointer;
+            color: #666;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .image-preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .image-preview {
+            position: relative;
+            aspect-ratio: 1;
+        }
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .remove-image {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Create New Unit</h1>
+        <form id="unitForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="estateId">Estate ID:</label>
+                <input type="text" id="estateId" name="estateId" required minlength="1">
+            </div>
+
+            <div class="form-group">
+                <label for="buildingId">Building ID:</label>
+                <input type="text" id="buildingId" name="buildingId" required minlength="1">
+            </div>
+
+            <div class="form-group">
+                <label for="name">Unit Name:</label>
+                <input type="text" id="name" name="name" required minlength="2">
+            </div>
+
+            <div class="form-group">
+                <label for="unitType">Unit Type:</label>
+                <select id="unitType" name="unitType" required>
+                    <option value="">Select Type</option>
+                    <option value="OFFICE">Office</option>
+                    <option value="RESIDENTIAL">Residential</option>
+                    <option value="BUSINESS">Business</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="unitSize">Unit Size:</label>
+                <select id="unitSize" name="unitSize">
+                    <option value="">Select Size (Optional)</option>
+                    <option value="ONE_BED">One Bedroom</option>
+                    <option value="TWO_BED">Two Bedroom</option>
+                    <option value="THREE_BED">Three Bedroom</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="unitPrice">Unit Price:</label>
+                <input type="number" id="unitPrice" name="unitPrice" required min="0" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label for="availability">Availability:</label>
+                <select id="availability" name="availability">
+                    <option value="">Select Availability (Optional)</option>
+                    <option value="VACANT">Vacant</option>
+                    <option value="OCCUPIED">Occupied</option>
+                </select>
+            </div>
+
+            <div class="features-container">
+                <label>Interior Features:</label>
+                <div class="feature-input">
+                    <input type="text" id="interiorFeature" placeholder="Add interior feature">
+                    <button type="button" onclick="addFeature()">Add</button>
+                </div>
+                <div id="interiorFeatures" class="feature-tags"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="images">Unit Images:</label>
+                <input type="file" id="images" name="images" accept="image/*" multiple required>
+                <div id="imagePreview" class="image-preview-container"></div>
+            </div>
+
+            <button type="submit">Create Unit</button>
+        </form>
+
+        <div id="response" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        let interiorFeatures = [];
+        let selectedImages = [];
+
+        function addFeature() {
+            const input = document.getElementById('interiorFeature');
+            const value = input.value.trim();
+            if (!value) return;
+
+            if (!interiorFeatures.includes(value)) {
+                interiorFeatures.push(value);
+                updateFeatureTags();
+            }
+            input.value = '';
+        }
+
+        function removeFeature(feature) {
+            const index = interiorFeatures.indexOf(feature);
+            if (index > -1) {
+                interiorFeatures.splice(index, 1);
+                updateFeatureTags();
+            }
+        }
+
+        function updateFeatureTags() {
+            const container = document.getElementById('interiorFeatures');
+            container.innerHTML = interiorFeatures.map(feature => `
+                <span class="feature-tag">
+                    ${feature}
+                    <span class="remove-tag" onclick="removeFeature('${feature}')">&times;</span>
+                </span>
+            `).join('');
+        }
+
+        document.getElementById('images').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML += `
+                        <div class="image-preview">
+                            <img src="${e.target.result}" alt="Preview">
+                            <span class="remove-image" onclick="removeImage(${index})">&times;</span>
+                        </div>
+                    `;
+                }
+                reader.readAsDataURL(file);
+            });
+            
+            selectedImages = files;
+        });
+
+        function removeImage(index) {
+            const preview = document.getElementById('imagePreview');
+            const previewItems = preview.getElementsByClassName('image-preview');
+            if (previewItems[index]) {
+                previewItems[index].remove();
+            }
+        }
+
+        document.getElementById('unitForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const unitData = {
+                estateId: document.getElementById('estateId').value,
+                buildingId: document.getElementById('buildingId').value,
+                name: document.getElementById('name').value,
+                unitType: document.getElementById('unitType').value,
+                unitSize: document.getElementById('unitSize').value || undefined,
+                unitPrice: parseFloat(document.getElementById('unitPrice').value),
+                availability: document.getElementById('availability').value || undefined,
+                interiorFeatures: interiorFeatures
+            };
+
+            try {
+                // First, upload images
+                const imageInput = document.getElementById('images');
+                const imageUrls = [];
+                
+                if (imageInput.files.length > 0) {
+                    const imageFormData = new FormData();
+                    Array.from(imageInput.files).forEach(file => {
+                        imageFormData.append('images', file);
+                    });
+
+                    const imageUploadResponse = await fetch('http://localhost:8080/api/v1/properties/upload-images', {
+                        method: 'POST',
+                        body: imageFormData,
+                        headers: {
+                            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbTdkeXc2NzEwMDAyNzRnNXl5cDJ1YXp6Iiwicm9sZSI6Ik1BTkFHRVIiLCJpYXQiOjE3NDAwOTM3NzYsImV4cCI6MTc0MDY5ODU3Nn0.07VE6x958kxROEia7ZTWsicAsqKjGFkN8njTvHOaR44'
+                        }
+                    });
+
+                    if (!imageUploadResponse.ok) {
+                        throw new Error('Failed to upload images');
+                    }
+
+                    const imageData = await imageUploadResponse.json();
+                    imageUrls.push(...imageData.urls);
+                }
+
+                // Add image URLs to unit data
+                unitData.images = imageUrls;
+
+                // Create unit
+                const response = await fetch('http://localhost:8080/api/v1/properties/manager/rental-unit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbTdkeXc2NzEwMDAyNzRnNXl5cDJ1YXp6Iiwicm9sZSI6Ik1BTkFHRVIiLCJpYXQiOjE3NDAwOTM3NzYsImV4cCI6MTc0MDY5ODU3Nn0.07VE6x958kxROEia7ZTWsicAsqKjGFkN8njTvHOaR44'
+                    },
+                    body: JSON.stringify(unitData)
+                });
+                
+                const data = await response.json();
+                document.getElementById('response').innerHTML = `
+                    <pre style="background: #f0f0f0; padding: 10px; border-radius: 4px;">
+                        ${JSON.stringify(data, null, 2)}
+                    </pre>
+                `;
+                
+                if (response.ok) {
+                    alert('Unit created successfully!');
+                    this.reset();
+                    document.getElementById('imagePreview').innerHTML = '';
+                    interiorFeatures = [];
+                    updateFeatureTags();
+                } else {
+                    alert('Error creating unit: ' + (data.message || JSON.stringify(data.errors)));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('response').innerHTML = `
+                    <pre style="background: #fff0f0; padding: 10px; border-radius: 4px; color: red;">
+                        ${error.toString()}
+                    </pre>
+                `;
+                alert('Error creating unit. Please check the console for details.');
+            }
+        });
+    </script>
+</body>
+</html>
