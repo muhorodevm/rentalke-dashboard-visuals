@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +11,7 @@ import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
 import OtpVerificationForm from "@/components/auth/OtpVerificationForm";
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 
-const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/manager";
+const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/admin";
 
 type Step = "email" | "otp" | "reset";
 
@@ -25,7 +24,6 @@ const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Handle navigation back to login
   const handleBackToLogin = () => {
     navigate("/login");
   };

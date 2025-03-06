@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ interface ResetPasswordFormProps {
   handleBackToLogin: () => void;
 }
 
-const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/manager";
+const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/admin";
 
 const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
   email,

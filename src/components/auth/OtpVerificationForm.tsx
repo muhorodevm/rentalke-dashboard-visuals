@@ -14,7 +14,7 @@ interface OtpVerificationFormProps {
   setOtpVerified: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/manager";
+const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/admin";
 
 const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   email,
