@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -18,6 +19,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,35 +29,62 @@ const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/admin";
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Function to check if token is expired
   const isTokenValid = (): boolean => {
     const token = localStorage.getItem("token");
-    const expirationTime = localStorage.getItem("token_expiration");
+    if (!token) return false;
     
-    if (!token || !expirationTime) return false;
-
-    return Date.now() < Number(expirationTime); // If current time is before expiration, token is valid
+    try {
+      // Parse the JWT token to get the expiration time
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const { exp } = JSON.parse(jsonPayload);
+      
+      // Check if token is expired
+      return Date.now() < exp * 1000;
+    } catch (error) {
+      console.error("Error parsing token:", error);
+      return false;
+    }
   };
 
-  // Load user session on page reload
+  // Load user session on mount
   useEffect(() => {
-    if (isTokenValid()) {
-      const storedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
+    const initAuth = async () => {
+      setIsLoading(true);
+      
+      if (isTokenValid()) {
+        const storedUser = localStorage.getItem("user");
+        const token = localStorage.getItem("token");
 
-      if (storedUser && token) {
-        setUser(JSON.parse(storedUser));
-        setIsAuthenticated(true);
+        if (storedUser && token) {
+          setUser(JSON.parse(storedUser));
+          setIsAuthenticated(true);
 
-        // Reattach Authorization header on reload
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          // Reattach Authorization header on reload
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        }
+      } else {
+        // If token is expired or invalid, logout silently
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setIsAuthenticated(false);
+        setUser(null);
+        delete axios.defaults.headers.common["Authorization"];
       }
-    } else {
-      logout(); // If token is expired, logout
-    }
+      
+      setIsLoading(false);
+    };
+
+    initAuth();
   }, []);
 
   // Login function
@@ -63,14 +92,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
 
-      const { token, user, expiresIn } = response.data; // Ensure backend returns `expiresIn` (in seconds)
-      const expirationTime = Date.now() + expiresIn * 1000; // Convert seconds to milliseconds
-
+      const { token, user, message } = response.data;
+      
       // Store token and user data in localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("token_expiration", expirationTime.toString());
-
+      
       setIsAuthenticated(true);
       setUser(user);
 
@@ -79,10 +106,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Redirect to dashboard
       navigate("/");
-      toast({ description: "Login Successful", variant: "default" });
-    } catch (error) {
+      toast({ description: message || "Login Successful", variant: "default" });
+    } catch (error: any) {
       console.error("Login failed", error);
-      toast({ description: "Login failed. Check your credentials.", variant: "destructive" });
+      const errorMessage = error.response?.data?.message || "Login failed. Check your credentials.";
+      toast({ description: errorMessage, variant: "destructive" });
+      throw error; // Rethrow to allow handling in the component
     }
   };
 
@@ -91,7 +120,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear local storage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("token_expiration");
 
     // Clear state
     setIsAuthenticated(false);
@@ -105,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
