@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -49,12 +50,24 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Ensure uploads directory exists
+const fs = require('fs');
+if (!fs.existsSync('./uploads')) {
+  fs.mkdirSync('./uploads');
+}
+
 // API Routes
 app.use('/api/v1/admin', require('./src/routes/admin.routes'));
+app.use('/api/v1/admin/users', require('./src/routes/admin.user.routes'));
 app.use('/api/v1/manager', require('./src/routes/manager.routes'));
 app.use('/api/v1/client', require('./src/routes/client.routes'));
 app.use('/api/v1/properties', require('./src/routes/property.routes'));
 app.use('/api/v1/properties/upload-images', require('./src/routes/property.routes'));
+app.use('/api/v1/email-templates', require('./src/routes/email.template.routes'));
+app.use('/api/v1/notifications', require('./src/routes/notification.routes'));
+app.use('/api/v1/messages', require('./src/routes/message.routes'));
+app.use('/api/v1/profile', require('./src/routes/profile.routes'));
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

@@ -1,3 +1,4 @@
+
 // This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
@@ -25,6 +26,18 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum NotificationType {
+  EMAIL
+  SYSTEM
+  BOTH
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
 model User {
   id            String    @id @default(cuid())
   firstName     String?
@@ -36,6 +49,9 @@ model User {
   facebookId    String?   @unique
   role          UserRole  @default(CLIENT)
   resetPasswordOTP String?
+  profileImage  String?
+  department    String?
+  position      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -48,6 +64,8 @@ model User {
   sentMessages     Message[]  @relation("SentMessages")
   receivedMessages Message[]  @relation("ReceivedMessages")
   notifications    Notification[]
+  emailNotifications EmailNotification[]
+  emailTemplates EmailTemplate[]  @relation("TemplateCreator")
 
   @@map("users")
 }
@@ -166,6 +184,7 @@ model Notification {
   id            String    @id @default(cuid())
   userId        String
   message       String
+  isRead        Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -180,6 +199,8 @@ model Message {
   senderId      String
   receiverId    String
   message       String
+  status        MessageStatus @default(SENT)
+  isRead        Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -208,4 +229,41 @@ model Review {
   rentalUnit    RentalUnit @relation(fields: [rentalUnitId], references: [id])
 
   @@map("reviews")
+}
+
+model EmailTemplate {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  subject       String
+  htmlContent   String
+  variables     String[]
+  description   String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  createdBy     User      @relation("TemplateCreator", fields: [createdById], references: [id])
+  notifications EmailNotification[]
+
+  @@map("email_templates")
+}
+
+model EmailNotification {
+  id            String    @id @default(cuid())
+  userId        String
+  templateId    String
+  recipient     String
+  variables     Json?
+  status        String    @default("pending")
+  errorMessage  String?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id])
+  template      EmailTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("email_notifications")
 }

@@ -1,45 +1,17 @@
+
+const http = require('http');
 const app = require('./app');
-const { PrismaClient } = require('@prisma/client');
+const setupSocketIO = require('./src/socket/socket');
 
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 8080;
+const port = process.env.PORT || 5000;
 
-async function startServer() {
-  try {
-    // Test database connection
-    await prisma.$connect();
-    console.log('Successfully connected to the database');
+// Create HTTP server
+const server = http.createServer(app);
 
-    // Find an available port
-    const server = app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    }).on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.log(`Port ${PORT} is busy, trying ${PORT + 1}`);
-        server.close();
-        app.listen(PORT + 1, () => {
-          console.log(`Server is running on port ${PORT + 1}`);
-        });
-      } else {
-        console.error('Failed to start server:', err);
-        process.exit(1);
-      }
-    });
-  } catch (error) {
-    console.error('Failed to start the server:', error);
-    process.exit(1);
-  }
-}
+// Set up WebSocket server
+const io = setupSocketIO(server);
 
-// Handle cleanup
-process.on('SIGTERM', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
+// Start server
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
-
-process.on('SIGINT', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
-
-startServer();

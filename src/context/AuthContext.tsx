@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
+import { initializeSocket, closeSocket } from "@/utils/socket";
 
 // Define types for user and context state
 interface User {
@@ -12,6 +13,7 @@ interface User {
   lastName: string;
   role: string;
   phone: string;
+  profileImage?: string;
 }
 
 interface AuthContextType {
@@ -20,6 +22,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  updateUserProfile: (profileData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,11 +69,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const token = localStorage.getItem("token");
 
         if (storedUser && token) {
-          setUser(JSON.parse(storedUser));
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
           setIsAuthenticated(true);
 
           // Reattach Authorization header on reload
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          
+          // Initialize socket connection
+          initializeSocket(token);
         }
       } else {
         // If token is expired or invalid, logout silently
@@ -79,12 +86,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(false);
         setUser(null);
         delete axios.defaults.headers.common["Authorization"];
+        closeSocket();
       }
       
       setIsLoading(false);
     };
 
     initAuth();
+    
+    // Clean up socket on unmount
+    return () => {
+      closeSocket();
+    };
   }, []);
 
   // Login function
@@ -103,6 +116,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Set the Authorization header for Axios globally
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      
+      // Initialize socket connection
+      initializeSocket(token);
 
       // Redirect to dashboard
       navigate("/");
@@ -115,8 +131,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Update user profile
+  const updateUserProfile = (profileData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...profileData };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  };
+
   // Logout function
   const logout = () => {
+    // Close socket connection
+    closeSocket();
+    
     // Clear local storage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -133,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );
