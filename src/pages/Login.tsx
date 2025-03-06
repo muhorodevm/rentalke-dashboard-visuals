@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, LockKeyhole, Mail, Loader2 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { useAuth } from "@/context/AuthContext"; // Import the context
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -14,7 +14,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { login } = useAuth(); // Get the login function from the context
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,16 +22,15 @@ const Login: React.FC = () => {
     setIsLoading(true);
   
     try {
-      await login(email, password);
-      // No need for toast or navigate here as the context handles it
+      await login(email, password); // ✅ Wait for login to complete
     } catch (error) {
-      // Error is handled in the context
-      console.error("Login error:", error);
+      toast({ description: "Login failed. Please check your credentials.", variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // ✅ Ensure loading state is reset after login attempt
     }
   };
   
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <motion.div
@@ -60,7 +59,6 @@ const Login: React.FC = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
                     required
-                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -74,7 +72,6 @@ const Login: React.FC = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
                     required
-                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -82,7 +79,6 @@ const Login: React.FC = () => {
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 py-2"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5 text-muted-foreground" />
@@ -92,9 +88,9 @@ const Login: React.FC = () => {
                   </Button>
                 </div>
                 <div className="flex items-center justify-end">
-                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                  <a href="#" className="text-sm text-primary hover:underline">
                     Forgot password?
-                  </Link>
+                  </a>
                 </div>
               </div>
               <Button
@@ -102,14 +98,7 @@ const Login: React.FC = () => {
                 className="w-full bg-rentalke-blue hover:bg-rentalke-blue/90"
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </span>
-                ) : (
-                  "Sign in"
-                )}
+                {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
           </CardContent>

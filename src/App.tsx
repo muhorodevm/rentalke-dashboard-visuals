@@ -1,4 +1,3 @@
-
 // App.tsx
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,7 +10,6 @@ import Layout from "@/components/layout/Layout";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
 import Analytics from "./pages/Analytics";
 import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
@@ -19,7 +17,7 @@ import Notifications from "./pages/Notifications";
 import UserManagement from "./pages/UserManagement";
 import Profile from "./pages/Profile";
 import Payments from "./pages/Payments";
-import PrivateRoute from "@/components/layout/PrivateRoute";
+import PrivateRoute from "@/components/layout/PrivateRoute";  // Import the PrivateRoute component
 
 const queryClient = new QueryClient();
 
@@ -33,7 +31,6 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
               
               {/* Wrap protected routes with PrivateRoute */}
               <Route element={<PrivateRoute />}>
