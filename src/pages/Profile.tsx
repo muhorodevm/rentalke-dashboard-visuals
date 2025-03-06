@@ -42,6 +42,7 @@ import {
   Lock,
   Key
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 // Extended user data for profile page
 const extendedUserProfile = {
@@ -71,6 +72,8 @@ const ProfilePage: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const {user} = useAuth();
+  const name = user.firstName + user.lastName;
   
   const handleUpdateProfile = () => {
     setProfile(editedProfile);
@@ -144,7 +147,7 @@ const ProfilePage: React.FC = () => {
                 <Avatar className="h-24 w-24">
                   <AvatarImage src={profile.avatar} alt={profile.name} />
                   <AvatarFallback className="text-2xl">
-                    {profile.name.split(' ').map(n => n[0]).join('')}
+                    {user?.firstName.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <Button 
@@ -155,10 +158,10 @@ const ProfilePage: React.FC = () => {
                 </Button>
               </div>
             </div>
-            <CardTitle>{profile.name}</CardTitle>
+            <CardTitle>{user?.firstName} {user?.lastName}</CardTitle>
             <div className="flex justify-center mt-2">
               <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-                {profile.role}
+                {user?.role}
               </Badge>
             </div>
             <CardDescription className="mt-2">
@@ -170,11 +173,11 @@ const ProfilePage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{profile.email}</span>
+                <span className="text-sm">{user?.email}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{profile.phoneNumber}</span>
+                <span className="text-sm">{user?.phone}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -315,15 +318,15 @@ const ProfilePage: React.FC = () => {
                         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-y-4">
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Full Name</p>
-                            <p>{profile.name}</p>
+                            <p>{user?.firstName} {user?.lastName}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Email</p>
-                            <p>{profile.email}</p>
+                            <p>{user?.email}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                            <p>{profile.phoneNumber}</p>
+                            <p>{user?.phone}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Location</p>

@@ -15,7 +15,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from '@/context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+
 
 interface TopbarProps {
   isSidebarCollapsed: boolean;
@@ -23,6 +26,10 @@ interface TopbarProps {
 
 const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
   const { theme, toggleTheme } = useTheme();
+  
+  const { logout } = useAuth();
+  const {user}= useAuth();
+
   const [unreadNotifications, setUnreadNotifications] = useState(
     notificationsData.filter(n => !n.read).length
   );
@@ -138,40 +145,42 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
           </DropdownMenu>
           
           {/* User dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 pl-3 pr-0 overflow-hidden" size="sm">
-                <span className="mr-2 hidden sm:inline-block">{userProfile.name}</span>
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                  <AvatarFallback>
-                    {userProfile.name.split(' ').map(n => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{userProfile.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {userProfile.email}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings">Settings</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/login">Logout</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="ghost" className="relative h-8 pl-3 pr-0 overflow-hidden" size="sm">
+      <span className="mr-2 hidden sm:inline-block">{user?.firstName}</span>
+      <Avatar className="h-8 w-8">
+        {userProfile.avatar ? (
+          <AvatarImage src={userProfile.avatar} alt={user.firstName} />
+        ) : (
+          <AvatarFallback>
+            {user?.firstName?.[0] || ""}{user?.lastName?.[0] || ""}
+          </AvatarFallback>
+        )}
+      </Avatar>
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end" className="w-56">
+    <DropdownMenuLabel className="font-normal">
+      <div className="flex flex-col space-y-1">
+        <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
+        <p className="text-xs text-muted-foreground">{user?.email}</p>
+      </div> 
+    </DropdownMenuLabel>
+    <DropdownMenuSeparator />
+    <DropdownMenuItem asChild>
+      <Link to="/profile">Profile</Link>
+    </DropdownMenuItem>
+    <DropdownMenuItem asChild>
+      <Link to="/settings">Settings</Link>
+    </DropdownMenuItem>
+    <DropdownMenuSeparator />
+    <DropdownMenuItem asChild>
+      <Link to="/login" onClick={logout}>Logout</Link>
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
+
         </div>
       </div>
     </header>

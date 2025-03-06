@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -18,6 +20,8 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
   const location = useLocation();
   const { toast } = useToast();
+  const { logout } = useAuth();
+  
   
   const navigationItems = [
     { name: 'Dashboard', path: '/', icon: Home },
@@ -35,7 +39,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       title: "Logging out",
       description: "You have been logged out successfully.",
     });
-    // In a real app, would handle logout logic here
+    logout(); // Call the logout function from the context
+    
   };
   
   const sidebarVariants = {
