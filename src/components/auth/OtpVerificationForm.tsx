@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +31,6 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Start timer when component mounts and OTP has been sent
   useEffect(() => {
     if (otpSent) {
       startTimer();
@@ -84,7 +82,6 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       return;
     }
 
-    // Just verify the OTP format here, actual verification happens in the reset password step
     if (otp.length < 6) {
       toast({
         description: "Please enter a valid verification code",
@@ -93,7 +90,6 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       return;
     }
 
-    // Since we can't verify OTP without resetting password, move to the next step
     setOtpVerified(true);
     setStep("reset");
   };
@@ -103,7 +99,7 @@ const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
     
     setResending(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/reset-password`, { email });
+      const response = await axios.post(`${API_BASE_URL}/forgot-password`, { email });
       
       const { message, success } = response.data;
       

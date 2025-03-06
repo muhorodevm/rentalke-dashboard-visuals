@@ -39,7 +39,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/reset-password`, { email });
+      const response = await axios.post(`${API_BASE_URL}/forgot-password`, { email });
       
       const { message, success } = response.data;
       
