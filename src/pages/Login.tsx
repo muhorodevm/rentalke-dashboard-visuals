@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -23,7 +22,7 @@ const Login: React.FC = () => {
     setIsLoading(true);
   
     try {
-      // Call the login function from the AuthContext
+      // Call the login function from the AuthContext, which now returns a boolean
       const success = await login(email, password);
       
       if (success) {
@@ -31,8 +30,7 @@ const Login: React.FC = () => {
           title: "Login successful",
           description: "Welcome to RentalKE Admin Dashboard",
         });
-        // Initialize socket connection after login
-        navigate("/");
+        // Navigate happens inside the login function now
       }
     } catch (error) {
       console.error("Login error:", error);

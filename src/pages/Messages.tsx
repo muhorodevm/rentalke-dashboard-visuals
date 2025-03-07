@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
@@ -81,12 +80,13 @@ const Messages: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
-  const { user, token } = useAuth();
+  const { user, getToken } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const API_BASE_URL = import.meta.env.VITE_API_URL || "https://rentalke-server-2.onrender.com/api/v1";
 
   // Initialize socket connection when component mounts
   useEffect(() => {
+    const token = getToken();
     if (token) {
       const socket = initializeSocket(token);
       
@@ -108,7 +108,7 @@ const Messages: React.FC = () => {
         socket.off('new_message');
       };
     }
-  }, [token, selectedConversation]);
+  }, [getToken, selectedConversation]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -118,7 +118,7 @@ const Messages: React.FC = () => {
   // Fetch conversations on component mount
   useEffect(() => {
     fetchConversations();
-  }, [token]);
+  }, [getToken]);
 
   // Fetch messages when a conversation is selected
   useEffect(() => {
@@ -130,6 +130,7 @@ const Messages: React.FC = () => {
   const fetchConversations = async () => {
     setIsLoading(true);
     try {
+      const token = getToken();
       const response = await axios.get(`${API_BASE_URL}/admin/messages/conversations`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -176,6 +177,7 @@ const Messages: React.FC = () => {
   const fetchMessages = async (userId: string) => {
     setLoadingMessages(true);
     try {
+      const token = getToken();
       const response = await axios.get(`${API_BASE_URL}/admin/messages/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -274,6 +276,7 @@ const Messages: React.FC = () => {
     );
     
     try {
+      const token = getToken();
       await axios.post(`${API_BASE_URL}/admin/contacts/star/${userId}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });

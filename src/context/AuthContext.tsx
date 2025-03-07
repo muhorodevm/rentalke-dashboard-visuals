@@ -19,10 +19,11 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
   updateUserProfile: (profileData: Partial<User>) => void;
+  getToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,6 +58,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error parsing token:", error);
       return false;
     }
+  };
+
+  // Get token function for components that need it
+  const getToken = (): string | null => {
+    return localStorage.getItem("token");
   };
 
   // Load user session on mount
@@ -100,8 +106,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Login function
-  const login = async (email: string, password: string) => {
+  // Login function - now returns a boolean success indicator
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
 
@@ -123,11 +129,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Redirect to dashboard
       navigate("/");
       toast({ description: message || "Login Successful", variant: "default" });
+      
+      return true;
     } catch (error: any) {
       console.error("Login failed", error);
       const errorMessage = error.response?.data?.message || "Login failed. Check your credentials.";
       toast({ description: errorMessage, variant: "destructive" });
-      throw error; // Rethrow to allow handling in the component
+      return false;
     }
   };
 
@@ -161,7 +169,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading, updateUserProfile }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      login, 
+      logout, 
+      isLoading, 
+      updateUserProfile,
+      getToken 
+    }}>
       {children}
     </AuthContext.Provider>
   );
