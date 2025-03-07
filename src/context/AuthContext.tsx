@@ -13,6 +13,8 @@ interface User {
   lastName: string;
   role: string;
   phone: string;
+  department?: string;
+  position?: string;
   profileImage?: string;
 }
 
@@ -106,12 +108,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Login function - now returns a boolean success indicator
+  // Login function - returns a boolean success indicator
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Attempting login to:", API_BASE_URL);
       const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
 
       const { token, user, message } = response.data;
+      console.log("Login response:", { token: token ? "Received" : "None", user });
       
       // Store token and user data in localStorage
       localStorage.setItem("token", token);
@@ -132,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return true;
     } catch (error: any) {
-      console.error("Login failed", error);
+      console.error("Login failed", error.response || error);
       const errorMessage = error.response?.data?.message || "Login failed. Check your credentials.";
       toast({ description: errorMessage, variant: "destructive" });
       return false;

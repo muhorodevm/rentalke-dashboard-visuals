@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -48,124 +47,59 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Search, Filter, Plus, MoreHorizontal, UserPlus, Download, 
-  Trash2, Shield, UserX, Mail, Key, User, Users, CheckSquare 
+  Trash2, Shield, UserX, Mail, Key, User, Users, CheckSquare, Loader2
 } from "lucide-react";
 
 interface UserType {
-  id: number;
-  name: string;
+  id: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  role: "Admin" | "Manager" | "Client";
+  role: "ADMIN" | "MANAGER" | "CLIENT";
   status: "Active" | "Inactive" | "Pending";
+  department?: string;
+  position?: string;
   lastLogin?: string;
-  avatar?: string;
+  profileImage?: string;
 }
 
-const DEMO_USERS: UserType[] = [
-  {
-    id: 1,
-    name: "Jane Cooper",
-    email: "jane@example.com",
-    role: "Admin",
-    status: "Active",
-    lastLogin: "Today, 2:30 PM",
-    avatar: "https://i.pravatar.cc/150?img=1",
-  },
-  {
-    id: 2,
-    name: "Esther Howard",
-    email: "esther@example.com",
-    role: "Manager",
-    status: "Active",
-    lastLogin: "Yesterday, 10:15 AM",
-    avatar: "https://i.pravatar.cc/150?img=2",
-  },
-  {
-    id: 3,
-    name: "Darlene Robertson",
-    email: "darlene@example.com",
-    role: "Manager",
-    status: "Inactive",
-    lastLogin: "May 20, 2023",
-    avatar: "https://i.pravatar.cc/150?img=3",
-  },
-  {
-    id: 4,
-    name: "Jenny Wilson",
-    email: "jenny@example.com",
-    role: "Client",
-    status: "Active",
-    lastLogin: "Today, 9:00 AM",
-    avatar: "https://i.pravatar.cc/150?img=4",
-  },
-  {
-    id: 5,
-    name: "Robert Fox",
-    email: "robert@example.com",
-    role: "Client",
-    status: "Pending",
-    lastLogin: "Never",
-    avatar: "https://i.pravatar.cc/150?img=5",
-  },
-  {
-    id: 6,
-    name: "Wade Warren",
-    email: "wade@example.com",
-    role: "Client",
-    status: "Active",
-    lastLogin: "May 28, 2023",
-    avatar: "https://i.pravatar.cc/150?img=6",
-  },
-  {
-    id: 7,
-    name: "Leslie Alexander",
-    email: "leslie@example.com",
-    role: "Admin",
-    status: "Active",
-    lastLogin: "Today, 11:20 AM",
-    avatar: "https://i.pravatar.cc/150?img=7",
-  },
-  {
-    id: 8,
-    name: "Ralph Edwards",
-    email: "ralph@example.com",
-    role: "Manager",
-    status: "Active",
-    lastLogin: "Yesterday, 3:40 PM",
-    avatar: "https://i.pravatar.cc/150?img=8",
-  },
-];
+const ADMIN_POSITIONS = ["CEO", "CTO", "COO", "Other"];
+const DEPARTMENTS = ["Executive", "IT", "Operations", "Marketing", "Finance", "HR", "Sales", "Support"];
 
 const UserManagement: React.FC = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState<UserType[]>(DEMO_USERS);
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const { getToken, user: currentUser } = useAuth();
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [newUserData, setNewUserData] = useState<Partial<UserType>>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
-    role: "Client",
+    role: "CLIENT",
     status: "Active",
+    department: "",
+    position: ""
   });
-  const [filterRole, setFilterRole] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserType["role"]>("Client");
+  const [selectedRole, setSelectedRole] = useState<UserType["role"]>("CLIENT");
   const [selectedTab, setSelectedTab] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Filter users based on selected tab and search query
   const filteredUsers = users.filter((user) => {
-    // Filter by tab/role
-    if (selectedTab !== "all" && user.role.toLowerCase() !== selectedTab) {
+    if (selectedTab !== "all" && user.role.toLowerCase() !== selectedTab.toLowerCase()) {
       return false;
     }
     
-    // Filter by search query
     if (
       searchQuery &&
-      !user.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !`${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) &&
       !user.email.toLowerCase().includes(searchQuery.toLowerCase())
     ) {
       return false;
@@ -174,8 +108,63 @@ const UserManagement: React.FC = () => {
     return true;
   });
 
-  const handleAddUser = () => {
-    if (!newUserData.name || !newUserData.email) {
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const token = getToken();
+      const response = await axios.get("https://rentalke-server-2.onrender.com/api/v1/admin/users", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const formattedUsers = response.data.map((user: any) => ({
+        id: user.id,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email,
+        role: user.role,
+        status: user.isActive ? "Active" : "Inactive",
+        department: user.department || '',
+        position: user.position || '',
+        lastLogin: user.lastLogin || 'Never',
+        profileImage: user.profileImage
+      }));
+      
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch users. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const canModifyUser = (targetUser: UserType) => {
+    if (!currentUser) return false;
+    
+    if (currentUser.position === "CEO") return true;
+    
+    if ((currentUser.position === "CTO" || currentUser.position === "COO") && 
+        targetUser.position !== "CEO") {
+      return true;
+    }
+    
+    if (currentUser.role === "ADMIN" && targetUser.role !== "ADMIN") {
+      return true;
+    }
+    
+    return false;
+  };
+
+  const handleAddUser = async () => {
+    if (!newUserData.firstName || !newUserData.lastName || !newUserData.email) {
       toast({
         title: "Missing Information",
         description: "Name and email are required.",
@@ -184,61 +173,136 @@ const UserManagement: React.FC = () => {
       return;
     }
 
-    const newUser: UserType = {
-      id: users.length + 1,
-      name: newUserData.name as string,
-      email: newUserData.email as string,
-      role: newUserData.role as UserType["role"] || "Client",
-      status: newUserData.status as UserType["status"] || "Active",
-      lastLogin: "Never",
-      avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
-    };
-
-    setUsers([...users, newUser]);
-    setNewUserData({
-      name: "",
-      email: "",
-      role: "Client",
-      status: "Active",
-    });
-    setIsAddUserOpen(false);
-
-    toast({
-      title: "User Added",
-      description: `${newUser.name} has been added as a ${newUser.role}.`,
-    });
+    setIsSaving(true);
+    try {
+      const token = getToken();
+      const response = await axios.post("https://rentalke-server-2.onrender.com/api/v1/admin/users", {
+        firstName: newUserData.firstName,
+        lastName: newUserData.lastName,
+        email: newUserData.email,
+        role: newUserData.role,
+        department: newUserData.department,
+        position: newUserData.role === "ADMIN" ? newUserData.position : undefined
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const newUser = response.data;
+      setUsers([...users, {
+        id: newUser.id,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        email: newUser.email,
+        role: newUser.role,
+        status: "Active",
+        department: newUser.department || '',
+        position: newUser.position || '',
+        lastLogin: 'Never'
+      }]);
+      
+      setNewUserData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        role: "CLIENT",
+        status: "Active",
+        department: "",
+        position: ""
+      });
+      
+      setIsAddUserOpen(false);
+      toast({
+        title: "User Added",
+        description: `${newUser.firstName} ${newUserData.lastName} has been added as a ${newUserData.role}.`,
+      });
+    } catch (error: any) {
+      console.error("Error adding user:", error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to add user. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteUser = (id: number) => {
-    setUsers(users.filter((user) => user.id !== id));
-    toast({
-      title: "User Deleted",
-      description: "The user has been deleted successfully.",
-    });
+  const handleDeleteUser = async (id: string) => {
+    try {
+      const token = getToken();
+      await axios.delete(`https://rentalke-server-2.onrender.com/api/v1/admin/users/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setUsers(users.filter((user) => user.id !== id));
+      toast({
+        title: "User Deleted",
+        description: "The user has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again later.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleUpdateUserRole = (id: number, newRole: UserType["role"]) => {
-    setUsers(
-      users.map((user) =>
-        user.id === id ? { ...user, role: newRole } : user
-      )
-    );
-    toast({
-      title: "Role Updated",
-      description: `User role has been updated to ${newRole}.`,
-    });
+  const handleUpdateUserRole = async (id: string, newRole: UserType["role"]) => {
+    try {
+      const token = getToken();
+      await axios.patch(`https://rentalke-server-2.onrender.com/api/v1/admin/users/${id}/role`, {
+        role: newRole
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setUsers(
+        users.map((user) =>
+          user.id === id ? { ...user, role: newRole } : user
+        )
+      );
+      toast({
+        title: "Role Updated",
+        description: `User role has been updated to ${newRole}.`,
+      });
+    } catch (error) {
+      console.error("Error updating role:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update user role. Please try again later.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleUpdateUserStatus = (id: number, newStatus: UserType["status"]) => {
-    setUsers(
-      users.map((user) =>
-        user.id === id ? { ...user, status: newStatus } : user
-      )
-    );
-    toast({
-      title: "Status Updated",
-      description: `User status has been updated to ${newStatus}.`,
-    });
+  const handleUpdateUserStatus = async (id: string, newStatus: UserType["status"]) => {
+    try {
+      const token = getToken();
+      await axios.patch(`https://rentalke-server-2.onrender.com/api/v1/admin/users/${id}/status`, {
+        status: newStatus === "Active"
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setUsers(
+        users.map((user) =>
+          user.id === id ? { ...user, status: newStatus } : user
+        )
+      );
+      toast({
+        title: "Status Updated",
+        description: `User status has been updated to ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update user status. Please try again later.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSelectAllUsers = (checked: boolean) => {
@@ -249,7 +313,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleSelectUser = (userId: number, checked: boolean) => {
+  const handleSelectUser = (userId: string, checked: boolean) => {
     if (checked) {
       setSelectedUsers([...selectedUsers, userId]);
     } else {
@@ -257,7 +321,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleBulkAction = (action: 'delete' | 'activate' | 'deactivate') => {
+  const handleBulkAction = async (action: 'delete' | 'activate' | 'deactivate') => {
     if (selectedUsers.length === 0) {
       toast({
         title: "No Users Selected",
@@ -267,37 +331,70 @@ const UserManagement: React.FC = () => {
       return;
     }
 
-    let newUsers = [...users];
-    let actionMessage = "";
-
-    switch (action) {
-      case 'delete':
-        newUsers = users.filter(user => !selectedUsers.includes(user.id));
-        actionMessage = "Selected users have been deleted";
-        break;
-      case 'activate':
-        newUsers = users.map(user => 
-          selectedUsers.includes(user.id) ? {...user, status: "Active"} : user
-        );
-        actionMessage = "Selected users have been activated";
-        break;
-      case 'deactivate':
-        newUsers = users.map(user => 
-          selectedUsers.includes(user.id) ? {...user, status: "Inactive"} : user
-        );
-        actionMessage = "Selected users have been deactivated";
-        break;
+    try {
+      const token = getToken();
+      
+      switch (action) {
+        case 'delete':
+          await Promise.all(selectedUsers.map(id => 
+            axios.delete(`https://rentalke-server-2.onrender.com/api/v1/admin/users/${id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+          ));
+          setUsers(users.filter(user => !selectedUsers.includes(user.id)));
+          toast({
+            title: "Bulk Action Completed",
+            description: "Selected users have been deleted",
+          });
+          break;
+          
+        case 'activate':
+          await Promise.all(selectedUsers.map(id => 
+            axios.patch(`https://rentalke-server-2.onrender.com/api/v1/admin/users/${id}/status`, {
+              status: true
+            }, {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+          ));
+          setUsers(users.map(user => 
+            selectedUsers.includes(user.id) ? {...user, status: "Active"} : user
+          ));
+          toast({
+            title: "Bulk Action Completed",
+            description: "Selected users have been activated",
+          });
+          break;
+          
+        case 'deactivate':
+          await Promise.all(selectedUsers.map(id => 
+            axios.patch(`https://rentalke-server-2.onrender.com/api/v1/admin/users/${id}/status`, {
+              status: false
+            }, {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+          ));
+          setUsers(users.map(user => 
+            selectedUsers.includes(user.id) ? {...user, status: "Inactive"} : user
+          ));
+          toast({
+            title: "Bulk Action Completed",
+            description: "Selected users have been deactivated",
+          });
+          break;
+      }
+      
+      setSelectedUsers([]);
+    } catch (error) {
+      console.error("Error performing bulk action:", error);
+      toast({
+        title: "Error",
+        description: "Failed to perform bulk action. Please try again later.",
+        variant: "destructive"
+      });
     }
-
-    setUsers(newUsers);
-    setSelectedUsers([]);
-    toast({
-      title: "Bulk Action Completed",
-      description: actionMessage,
-    });
   };
 
-  const changeMultipleUserRoles = () => {
+  const changeMultipleUserRoles = async () => {
     if (selectedUsers.length === 0) {
       toast({
         title: "No Users Selected",
@@ -307,21 +404,38 @@ const UserManagement: React.FC = () => {
       return;
     }
 
-    const newUsers = users.map(user => 
-      selectedUsers.includes(user.id) ? {...user, role: selectedRole} : user
-    );
-    
-    setUsers(newUsers);
-    setSelectedUsers([]);
-    setIsRoleDialogOpen(false);
-    
-    toast({
-      title: "Roles Updated",
-      description: `${selectedUsers.length} users have been updated to ${selectedRole} role.`,
-    });
+    try {
+      const token = getToken();
+      await Promise.all(selectedUsers.map(id => 
+        axios.patch(`https://rentalke-server-2.onrender.com/api/v1/admin/users/${id}/role`, {
+          role: selectedRole
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ));
+      
+      const newUsers = users.map(user => 
+        selectedUsers.includes(user.id) ? {...user, role: selectedRole} : user
+      );
+      
+      setUsers(newUsers);
+      setSelectedUsers([]);
+      setIsRoleDialogOpen(false);
+      
+      toast({
+        title: "Roles Updated",
+        description: `${selectedUsers.length} users have been updated to ${selectedRole} role.`,
+      });
+    } catch (error) {
+      console.error("Error updating roles:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update user roles. Please try again later.",
+        variant: "destructive"
+      });
+    }
   };
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -386,19 +500,35 @@ const UserManagement: React.FC = () => {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <label htmlFor="name">Full Name</label>
-                          <Input
-                            id="name"
-                            placeholder="John Doe"
-                            value={newUserData.name || ""}
-                            onChange={(e) =>
-                              setNewUserData({
-                                ...newUserData,
-                                name: e.target.value,
-                              })
-                            }
-                          />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <label htmlFor="firstName">First Name</label>
+                            <Input
+                              id="firstName"
+                              placeholder="John"
+                              value={newUserData.firstName || ""}
+                              onChange={(e) =>
+                                setNewUserData({
+                                  ...newUserData,
+                                  firstName: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <label htmlFor="lastName">Last Name</label>
+                            <Input
+                              id="lastName"
+                              placeholder="Doe"
+                              value={newUserData.lastName || ""}
+                              onChange={(e) =>
+                                setNewUserData({
+                                  ...newUserData,
+                                  lastName: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
                         </div>
                         <div className="grid gap-2">
                           <label htmlFor="email">Email</label>
@@ -430,30 +560,61 @@ const UserManagement: React.FC = () => {
                               <SelectValue placeholder="Select role" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Admin">Admin</SelectItem>
-                              <SelectItem value="Manager">Manager</SelectItem>
-                              <SelectItem value="Client">Client</SelectItem>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
+                              <SelectItem value="MANAGER">Manager</SelectItem>
+                              <SelectItem value="CLIENT">Client</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
+                        
+                        {newUserData.role === "ADMIN" && (
+                          <>
+                            <div className="grid gap-2">
+                              <label htmlFor="position">Position</label>
+                              <Select
+                                onValueChange={(value) =>
+                                  setNewUserData({
+                                    ...newUserData,
+                                    position: value,
+                                  })
+                                }
+                                defaultValue={newUserData.position}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select position" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ADMIN_POSITIONS.map((position) => (
+                                    <SelectItem key={position} value={position}>
+                                      {position}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
+                        
                         <div className="grid gap-2">
-                          <label htmlFor="status">Status</label>
+                          <label htmlFor="department">Department</label>
                           <Select
                             onValueChange={(value) =>
                               setNewUserData({
                                 ...newUserData,
-                                status: value as UserType["status"],
+                                department: value,
                               })
                             }
-                            defaultValue={newUserData.status}
+                            defaultValue={newUserData.department}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
+                              <SelectValue placeholder="Select department" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Active">Active</SelectItem>
-                              <SelectItem value="Inactive">Inactive</SelectItem>
-                              <SelectItem value="Pending">Pending</SelectItem>
+                              {DEPARTMENTS.map((dept) => (
+                                <SelectItem key={dept} value={dept}>
+                                  {dept}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -462,7 +623,16 @@ const UserManagement: React.FC = () => {
                         <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
                           Cancel
                         </Button>
-                        <Button onClick={handleAddUser}>Add User</Button>
+                        <Button onClick={handleAddUser} disabled={isSaving}>
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Adding...
+                            </>
+                          ) : (
+                            "Add User"
+                          )}
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -486,9 +656,9 @@ const UserManagement: React.FC = () => {
                               <SelectValue placeholder="Select role" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Admin">Admin</SelectItem>
-                              <SelectItem value="Manager">Manager</SelectItem>
-                              <SelectItem value="Client">Client</SelectItem>
+                              <SelectItem value="ADMIN">Admin</SelectItem>
+                              <SelectItem value="MANAGER">Manager</SelectItem>
+                              <SelectItem value="CLIENT">Client</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -508,7 +678,7 @@ const UserManagement: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
                   <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search users..."
                       className="pl-8"
@@ -562,181 +732,192 @@ const UserManagement: React.FC = () => {
                     </TabsTrigger>
                     <TabsTrigger value="admin">
                       <Shield className="h-4 w-4 mr-2" />
-                      Admins ({users.filter(u => u.role === "Admin").length})
+                      Admins ({users.filter(u => u.role === "ADMIN").length})
                     </TabsTrigger>
                     <TabsTrigger value="manager">
                       <User className="h-4 w-4 mr-2" />
-                      Managers ({users.filter(u => u.role === "Manager").length})
+                      Managers ({users.filter(u => u.role === "MANAGER").length})
                     </TabsTrigger>
                     <TabsTrigger value="client">
                       <Users className="h-4 w-4 mr-2" />
-                      Clients ({users.filter(u => u.role === "Client").length})
+                      Clients ({users.filter(u => u.role === "CLIENT").length})
                     </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="all" className="pt-2">
                     <Card>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-12">
-                              <Checkbox 
-                                checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length}
-                                onCheckedChange={handleSelectAllUsers}
-                              />
-                            </TableHead>
-                            <TableHead>User</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Last Login</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredUsers.length === 0 ? (
+                      {isLoading ? (
+                        <div className="flex justify-center items-center p-8">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <span className="ml-2">Loading users...</span>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                No users found. Try adjusting your filters.
-                              </TableCell>
+                              <TableHead className="w-12">
+                                <Checkbox 
+                                  checked={filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length}
+                                  onCheckedChange={handleSelectAllUsers}
+                                />
+                              </TableHead>
+                              <TableHead>User</TableHead>
+                              <TableHead>Role</TableHead>
+                              <TableHead>Department</TableHead>
+                              <TableHead>Position</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Last Login</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                          ) : (
-                            filteredUsers.map((user) => (
-                              <TableRow key={user.id}>
-                                <TableCell>
-                                  <Checkbox 
-                                    checked={selectedUsers.includes(user.id)}
-                                    onCheckedChange={(checked) => handleSelectUser(user.id, !!checked)}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-3">
-                                    <Avatar>
-                                      <AvatarImage src={user.avatar} />
-                                      <AvatarFallback>
-                                        {user.name
-                                          .split(" ")
-                                          .map((n) => n[0])
-                                          .join("")
-                                          .toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <p className="font-medium">{user.name}</p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {user.email}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant="outline"
-                                    className={`
-                                      ${user.role === "Admin" ? "border-blue-200 bg-blue-50 text-blue-700" : ""}
-                                      ${user.role === "Manager" ? "border-purple-200 bg-purple-50 text-purple-700" : ""}
-                                      ${user.role === "Client" ? "border-green-200 bg-green-50 text-green-700" : ""}
-                                    `}
-                                  >
-                                    {user.role}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant="outline"
-                                    className={`
-                                      ${user.status === "Active" ? "border-green-200 bg-green-50 text-green-700" : ""}
-                                      ${user.status === "Inactive" ? "border-gray-200 bg-gray-50 text-gray-700" : ""}
-                                      ${user.status === "Pending" ? "border-yellow-200 bg-yellow-50 text-yellow-700" : ""}
-                                    `}
-                                  >
-                                    {user.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>{user.lastLogin}</TableCell>
-                                <TableCell className="text-right">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => {
-                                        toast({
-                                          title: "Email Sent",
-                                          description: `An email has been sent to ${user.name}.`,
-                                        });
-                                      }}>
-                                        <Mail className="h-4 w-4 mr-2" />
-                                        Send Email
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => {
-                                        toast({
-                                          title: "Password Reset",
-                                          description: `Password reset link sent to ${user.name}.`,
-                                        });
-                                      }}>
-                                        <Key className="h-4 w-4 mr-2" />
-                                        Reset Password
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => {
-                                        const newRole: UserType["role"] = 
-                                          user.role === "Admin" ? "Manager" : 
-                                          user.role === "Manager" ? "Client" : "Manager";
-                                        handleUpdateUserRole(user.id, newRole);
-                                      }}>
-                                        <Shield className="h-4 w-4 mr-2" />
-                                        Change Role
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => {
-                                        const newStatus: UserType["status"] = 
-                                          user.status === "Active" ? "Inactive" : "Active";
-                                        handleUpdateUserStatus(user.id, newStatus);
-                                      }}>
-                                        {user.status === "Active" ? (
-                                          <>
-                                            <UserX className="h-4 w-4 mr-2" />
-                                            Deactivate
-                                          </>
-                                        ) : (
-                                          <>
-                                            <User className="h-4 w-4 mr-2" />
-                                            Activate
-                                          </>
-                                        )}
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem 
-                                        className="text-red-600"
-                                        onClick={() => handleDeleteUser(user.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredUsers.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                  No users found. Try adjusting your filters.
                                 </TableCell>
                               </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
+                            ) : (
+                              filteredUsers.map((user) => (
+                                <TableRow key={user.id}>
+                                  <TableCell>
+                                    <Checkbox 
+                                      checked={selectedUsers.includes(user.id)}
+                                      onCheckedChange={(checked) => handleSelectUser(user.id, !!checked)}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-3">
+                                      <Avatar>
+                                        <AvatarImage src={user.profileImage} />
+                                        <AvatarFallback>
+                                          {`${user.firstName[0] || ''}${user.lastName[0] || ''}`.toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="font-medium">{user.firstName} {user.lastName}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                          {user.email}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant="outline"
+                                      className={`
+                                        ${user.role === "ADMIN" ? "border-blue-200 bg-blue-50 text-blue-700" : ""}
+                                        ${user.role === "MANAGER" ? "border-purple-200 bg-purple-50 text-purple-700" : ""}
+                                        ${user.role === "CLIENT" ? "border-green-200 bg-green-50 text-green-700" : ""}
+                                      `}
+                                    >
+                                      {user.role}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{user.department || '-'}</TableCell>
+                                  <TableCell>{user.position || '-'}</TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant="outline"
+                                      className={`
+                                        ${user.status === "Active" ? "border-green-200 bg-green-50 text-green-700" : ""}
+                                        ${user.status === "Inactive" ? "border-gray-200 bg-gray-50 text-gray-700" : ""}
+                                        ${user.status === "Pending" ? "border-yellow-200 bg-yellow-50 text-yellow-700" : ""}
+                                      `}
+                                    >
+                                      {user.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{user.lastLogin}</TableCell>
+                                  <TableCell className="text-right">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => {
+                                          toast({
+                                            title: "Email Sent",
+                                            description: `An email has been sent to ${user.firstName} ${user.lastName}.`,
+                                          });
+                                        }}>
+                                          <Mail className="h-4 w-4 mr-2" />
+                                          Send Email
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => {
+                                          toast({
+                                            title: "Password Reset",
+                                            description: `Password reset link sent to ${user.firstName} ${user.lastName}.`,
+                                          });
+                                        }}>
+                                          <Key className="h-4 w-4 mr-2" />
+                                          Reset Password
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        {canModifyUser(user) && (
+                                          <>
+                                            <DropdownMenuItem onClick={() => {
+                                              const newRole: UserType["role"] = 
+                                                user.role === "ADMIN" ? "MANAGER" : 
+                                                user.role === "MANAGER" ? "CLIENT" : "MANAGER";
+                                              handleUpdateUserRole(user.id, newRole);
+                                            }}>
+                                              <Shield className="h-4 w-4 mr-2" />
+                                              Change Role
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => {
+                                              const newStatus: UserType["status"] = 
+                                                user.status === "Active" ? "Inactive" : "Active";
+                                              handleUpdateUserStatus(user.id, newStatus);
+                                            }}>
+                                              {user.status === "Active" ? (
+                                                <>
+                                                  <UserX className="h-4 w-4 mr-2" />
+                                                  Deactivate
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <User className="h-4 w-4 mr-2" />
+                                                  Activate
+                                                </>
+                                              )}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem 
+                                              className="text-red-600"
+                                              onClick={() => handleDeleteUser(user.id)}
+                                            >
+                                              <Trash2 className="h-4 w-4 mr-2" />
+                                              Delete
+                                            </DropdownMenuItem>
+                                          </>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
                     </Card>
                   </TabsContent>
                   
                   <TabsContent value="admin">
-                    {/* Admin tab content - Using the same table structure as the "all" tab */}
+                    {/* Admin tab content - table with filtered users */}
                   </TabsContent>
                   
                   <TabsContent value="manager">
-                    {/* Manager tab content - Using the same table structure as the "all" tab */}
+                    {/* Manager tab content - table with filtered users */}
                   </TabsContent>
                   
                   <TabsContent value="client">
-                    {/* Client tab content - Using the same table structure as the "all" tab */}
+                    {/* Client tab content - table with filtered users */}
                   </TabsContent>
                 </Tabs>
               </div>

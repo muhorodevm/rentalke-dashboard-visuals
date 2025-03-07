@@ -1,5 +1,6 @@
+
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,14 +16,13 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const { toast } = useToast();
   const { login } = useAuth();
-  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
   
     try {
-      // Call the login function from the AuthContext, which now returns a boolean
+      // Call the login function from the AuthContext, which returns a boolean
       const success = await login(email, password);
       
       if (success) {
@@ -30,13 +30,20 @@ const Login: React.FC = () => {
           title: "Login successful",
           description: "Welcome to RentalKE Admin Dashboard",
         });
-        // Navigate happens inside the login function now
+        // Navigation happens inside the login function
+      } else {
+        // This handles the case where login returns false but doesn't throw
+        toast({
+          title: "Login failed",
+          description: "Invalid email or password. Please try again.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
     } finally {
