@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   Card, 
   CardContent, 
@@ -15,19 +16,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { userProfile } from '@/data/dummyData';
 import { 
   Camera, 
   UserCog, 
@@ -40,52 +31,86 @@ import {
   ShieldCheck,
   Bell,
   Lock,
-  Key
+  Key,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
-// Extended user data for profile page
-const extendedUserProfile = {
-  ...userProfile,
-  role: 'Admin',
-  joinDate: '2022-01-15',
-  phoneNumber: '+1 (555) 123-4567',
-  location: 'New York, NY',
-  about: 'Experienced property manager with a passion for delivering excellent service. Specializing in residential properties and tenant relations.',
-  position: 'Senior Property Manager',
-  department: 'Operations',
-  skills: ['Property Management', 'Tenant Relations', 'Maintenance Coordination', 'Lease Agreements'],
-  notificationSettings: {
-    email: true,
-    push: true,
-    sms: false,
-    newsletter: true
-  }
-};
-
 const ProfilePage: React.FC = () => {
   const { toast } = useToast();
-  const [profile, setProfile] = useState(extendedUserProfile);
+  const { user, updateUserProfile, getToken } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [editing, setEditing] = useState(false);
-  const [editedProfile, setEditedProfile] = useState(extendedUserProfile);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const {user} = useAuth();
-  const name = user.firstName + user.lastName;
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [userData, setUserData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    department: user?.department || '',
+    position: user?.position || '',
+    profileImage: user?.profileImage || '',
+    location: '',
+    about: ''
+  });
   
-  const handleUpdateProfile = () => {
-    setProfile(editedProfile);
-    setEditing(false);
-    
-    toast({
-      title: "Profile Updated",
-      description: "Your profile has been updated successfully.",
-    });
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "https://rentalke-server-2.onrender.com/api/v1";
+  
+  useEffect(() => {
+    // Update local state when user data changes
+    if (user) {
+      setUserData({
+        ...userData,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        department: user.department || '',
+        position: user.position || '',
+        profileImage: user.profileImage || ''
+      });
+    }
+  }, [user]);
+
+  const handleUpdateProfile = async () => {
+    try {
+      const token = getToken();
+      const response = await axios.put(`${API_BASE_URL}/admin/profile`, {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+        department: userData.department,
+        position: userData.position,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.user) {
+        // Update local user context
+        updateUserProfile(response.data.user);
+        
+        toast({
+          title: "Profile Updated",
+          description: "Your profile has been updated successfully."
+        });
+        
+        setEditing(false);
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast({
         title: "Error",
@@ -104,27 +129,107 @@ const ProfilePage: React.FC = () => {
       return;
     }
     
-    // In a real app, would make an API call to update password
-    
-    toast({
-      title: "Password Updated",
-      description: "Your password has been changed successfully.",
-    });
-    
-    // Reset form
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      const token = getToken();
+      await axios.put(`${API_BASE_URL}/admin/change-password`, {
+        currentPassword,
+        newPassword
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully."
+      });
+      
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      const errorMessage = error.response?.data?.message || "Failed to update password";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
   };
   
-  const handleNotificationSettingChange = (setting: string, value: boolean) => {
-    setEditedProfile({
-      ...editedProfile,
-      notificationSettings: {
-        ...editedProfile.notificationSettings,
-        [setting]: value
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, or GIF image",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setUploadingImage(true);
+      
+      const formData = new FormData();
+      formData.append('profileImage', file);
+      
+      const token = getToken();
+      const response = await axios.post(`${API_BASE_URL}/admin/profile/upload-image`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data.user) {
+        // Update local user context
+        updateUserProfile(response.data.user);
+        
+        setUserData({
+          ...userData,
+          profileImage: response.data.user.profileImage
+        });
+        
+        toast({
+          title: "Profile Image Updated",
+          description: "Your profile image has been updated successfully."
+        });
       }
-    });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload profile image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImage(false);
+      // Reset the file input
+      e.target.value = '';
+    }
+  };
+
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
+    let initials = '';
+    if (firstName) initials += firstName[0];
+    if (lastName) initials += lastName[0];
+    return initials.toUpperCase() || 'U';
   };
   
   return (
@@ -145,17 +250,29 @@ const ProfilePage: React.FC = () => {
             <div className="flex justify-center mb-4">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={profile.avatar} alt={profile.name} />
+                  <AvatarImage src={userData.profileImage} alt="Profile" />
                   <AvatarFallback className="text-2xl">
-                    {user?.firstName.split(' ').map(n => n[0]).join('')}
+                    {getInitials(user?.firstName, user?.lastName)}
                   </AvatarFallback>
                 </Avatar>
-                <Button 
-                  size="icon" 
-                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                <label 
+                  htmlFor="profile-image-upload"
+                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer"
                 >
-                  <Camera className="h-4 w-4" />
-                </Button>
+                  {uploadingImage ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </label>
+                <input 
+                  id="profile-image-upload" 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden"
+                  onChange={handleFileChange}
+                  disabled={uploadingImage}
+                />
               </div>
             </div>
             <CardTitle>{user?.firstName} {user?.lastName}</CardTitle>
@@ -165,38 +282,27 @@ const ProfilePage: React.FC = () => {
               </Badge>
             </div>
             <CardDescription className="mt-2">
-              {profile.position}
-              <div className="text-sm mt-1">{profile.department}</div>
+              {userData.position || 'No position set'}
+              <div className="text-sm mt-1">{userData.department || 'No department set'}</div>
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{user?.email}</span>
+                <span className="text-sm">{userData.email}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{user?.phone}</span>
+                <span className="text-sm">{userData.phone || 'No phone number set'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{profile.location}</span>
+                <span className="text-sm">{userData.location || 'No location set'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Joined {new Date(profile.joinDate).toLocaleDateString()}</span>
-              </div>
-              <Separator />
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Skills</h4>
-                <div className="flex flex-wrap gap-2">
-                  {profile.skills.map((skill, i) => (
-                    <Badge key={i} variant="outline">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
+                <span className="text-sm">Joined {new Date(user?.createdAt || Date.now()).toLocaleDateString()}</span>
               </div>
             </div>
           </CardContent>
@@ -235,39 +341,43 @@ const ProfilePage: React.FC = () => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="fullName">Full Name</Label>
+                          <Label htmlFor="firstName">First Name</Label>
                           <Input
-                            id="fullName"
-                            value={editedProfile.name}
-                            onChange={(e) => setEditedProfile({...editedProfile, name: e.target.value})}
+                            id="firstName"
+                            value={userData.firstName}
+                            onChange={(e) => setUserData({...userData, firstName: e.target.value})}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="email">Email</Label>
+                          <Label htmlFor="lastName">Last Name</Label>
                           <Input
-                            id="email"
-                            type="email"
-                            value={editedProfile.email}
-                            onChange={(e) => setEditedProfile({...editedProfile, email: e.target.value})}
+                            id="lastName"
+                            value={userData.lastName}
+                            onChange={(e) => setUserData({...userData, lastName: e.target.value})}
                           />
                         </div>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={userData.email}
+                            readOnly
+                            disabled
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Contact an administrator to change your email address
+                          </p>
+                        </div>
+                        <div className="space-y-2">
                           <Label htmlFor="phone">Phone Number</Label>
                           <Input
                             id="phone"
-                            value={editedProfile.phoneNumber}
-                            onChange={(e) => setEditedProfile({...editedProfile, phoneNumber: e.target.value})}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="location">Location</Label>
-                          <Input
-                            id="location"
-                            value={editedProfile.location}
-                            onChange={(e) => setEditedProfile({...editedProfile, location: e.target.value})}
+                            value={userData.phone}
+                            onChange={(e) => setUserData({...userData, phone: e.target.value})}
                           />
                         </div>
                       </div>
@@ -277,26 +387,35 @@ const ProfilePage: React.FC = () => {
                           <Label htmlFor="position">Position</Label>
                           <Input
                             id="position"
-                            value={editedProfile.position}
-                            onChange={(e) => setEditedProfile({...editedProfile, position: e.target.value})}
+                            value={userData.position}
+                            onChange={(e) => setUserData({...userData, position: e.target.value})}
                           />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="department">Department</Label>
                           <Input
                             id="department"
-                            value={editedProfile.department}
-                            onChange={(e) => setEditedProfile({...editedProfile, department: e.target.value})}
+                            value={userData.department}
+                            onChange={(e) => setUserData({...userData, department: e.target.value})}
                           />
                         </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="location">Location</Label>
+                        <Input
+                          id="location"
+                          value={userData.location}
+                          onChange={(e) => setUserData({...userData, location: e.target.value})}
+                        />
                       </div>
                       
                       <div className="space-y-2">
                         <Label htmlFor="about">About</Label>
                         <Textarea
                           id="about"
-                          value={editedProfile.about}
-                          onChange={(e) => setEditedProfile({...editedProfile, about: e.target.value})}
+                          value={userData.about}
+                          onChange={(e) => setUserData({...userData, about: e.target.value})}
                           rows={4}
                         />
                       </div>
@@ -317,20 +436,24 @@ const ProfilePage: React.FC = () => {
                         <h3 className="text-lg font-medium">Personal Information</h3>
                         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-y-4">
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground">Full Name</p>
-                            <p>{user?.firstName} {user?.lastName}</p>
+                            <p className="text-sm font-medium text-muted-foreground">First Name</p>
+                            <p>{userData.firstName || 'Not set'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Last Name</p>
+                            <p>{userData.lastName || 'Not set'}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Email</p>
-                            <p>{user?.email}</p>
+                            <p>{userData.email}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                            <p>{user?.phone}</p>
+                            <p>{userData.phone || 'Not set'}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Location</p>
-                            <p>{profile.location}</p>
+                            <p>{userData.location || 'Not set'}</p>
                           </div>
                         </div>
                       </div>
@@ -342,15 +465,15 @@ const ProfilePage: React.FC = () => {
                         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-y-4">
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Position</p>
-                            <p>{profile.position}</p>
+                            <p>{userData.position || 'Not set'}</p>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-muted-foreground">Department</p>
-                            <p>{profile.department}</p>
+                            <p>{userData.department || 'Not set'}</p>
                           </div>
                           <div className="md:col-span-2">
                             <p className="text-sm font-medium text-muted-foreground">About</p>
-                            <p className="mt-1">{profile.about}</p>
+                            <p className="mt-1">{userData.about || 'No information provided'}</p>
                           </div>
                         </div>
                       </div>
@@ -479,10 +602,7 @@ const ProfilePage: React.FC = () => {
                             Receive notifications via email
                           </p>
                         </div>
-                        <Switch 
-                          checked={editedProfile.notificationSettings.email}
-                          onCheckedChange={(checked) => handleNotificationSettingChange('email', checked)}
-                        />
+                        <Switch checked={true} />
                       </div>
                       
                       <div className="flex items-center justify-between">
@@ -492,10 +612,7 @@ const ProfilePage: React.FC = () => {
                             Receive notifications in your browser
                           </p>
                         </div>
-                        <Switch 
-                          checked={editedProfile.notificationSettings.push}
-                          onCheckedChange={(checked) => handleNotificationSettingChange('push', checked)}
-                        />
+                        <Switch checked={true} />
                       </div>
                       
                       <div className="flex items-center justify-between">
@@ -505,10 +622,7 @@ const ProfilePage: React.FC = () => {
                             Receive notifications via text message
                           </p>
                         </div>
-                        <Switch 
-                          checked={editedProfile.notificationSettings.sms}
-                          onCheckedChange={(checked) => handleNotificationSettingChange('sms', checked)}
-                        />
+                        <Switch checked={false} />
                       </div>
                       
                       <div className="flex items-center justify-between">
@@ -518,16 +632,13 @@ const ProfilePage: React.FC = () => {
                             Receive monthly newsletter with updates
                           </p>
                         </div>
-                        <Switch 
-                          checked={editedProfile.notificationSettings.newsletter}
-                          onCheckedChange={(checked) => handleNotificationSettingChange('newsletter', checked)}
-                        />
+                        <Switch checked={true} />
                       </div>
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleUpdateProfile}>
+                  <Button>
                     <Save className="mr-2 h-4 w-4" />
                     Save Preferences
                   </Button>

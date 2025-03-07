@@ -9,13 +9,14 @@ import { initializeSocket, closeSocket } from "@/utils/socket";
 interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   role: string;
-  phone: string;
-  department?: string;
-  position?: string;
-  profileImage?: string;
+  phone: string | null;
+  department?: string | null;
+  position?: string | null;
+  profileImage?: string | null;
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -30,7 +31,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = "https://rentalke-server-2.onrender.com/api/v1/admin";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://rentalke-server-2.onrender.com/api/v1";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -111,8 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Login function - returns a boolean success indicator
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log("Attempting login to:", API_BASE_URL);
-      const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
+      console.log("Attempting login to:", `${API_BASE_URL}/admin/login`);
+      const response = await axios.post(`${API_BASE_URL}/admin/login`, { email, password });
 
       const { token, user, message } = response.data;
       console.log("Login response:", { token: token ? "Received" : "None", user });

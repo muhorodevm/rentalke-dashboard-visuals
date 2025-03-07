@@ -1,637 +1,691 @@
 
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
+  CardFooter
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  User, 
-  Bell, 
-  Shield, 
-  CreditCard, 
-  Smartphone, 
-  Mail, 
-  Globe, 
-  HelpCircle, 
-  Eye, 
-  EyeOff, 
-  Save 
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { userProfile } from "@/data/dummyData";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+  Bell,
+  Mail,
+  Settings as SettingsIcon,
+  Database,
+  Globe,
+  Shield,
+  Smartphone,
+  Save,
+  Plus,
+  Trash2,
+  Edit,
+  AlertTriangle
+} from 'lucide-react';
 
-const Settings: React.FC = () => {
+// Define types for email templates
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  htmlContent: string;
+  variables: string[];
+  description?: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Define types for system settings
+interface SystemSettings {
+  siteName: string;
+  logo: string;
+  primaryColor: string;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  maintenanceMode: boolean;
+  debugMode: boolean;
+  defaultBookingDuration: number;
+}
+
+const SettingsPage = () => {
+  const [activeTab, setActiveTab] = useState('email-templates');
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    subject: '',
+    htmlContent: '',
+    variables: [] as string[],
+    description: ''
+  });
+  const [systemSettings, setSystemSettings] = useState<SystemSettings>({
+    siteName: 'Rentalke Admin',
+    logo: '/logo.png',
+    primaryColor: '#3B82F6',
+    emailNotifications: true,
+    smsNotifications: false,
+    maintenanceMode: false,
+    debugMode: false,
+    defaultBookingDuration: 7
+  });
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState("account");
+  const { user, getToken } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSave = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast({
-        title: "Settings updated",
-        description: "Your settings have been updated successfully.",
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "https://rentalke-server-2.onrender.com/api/v1";
+
+  useEffect(() => {
+    fetchEmailTemplates();
+  }, []);
+
+  const fetchEmailTemplates = async () => {
+    setIsLoading(true);
+    try {
+      const token = getToken();
+      const response = await axios.get(`${API_BASE_URL}/admin/email-templates`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-    }, 1000);
+      setTemplates(response.data.templates);
+    } catch (error) {
+      console.error("Error fetching email templates:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        when: "beforeChildren",
-        staggerChildren: 0.1,
-      },
-    },
+  const handleCreateTemplate = async () => {
+    try {
+      const token = getToken();
+      await axios.post(`${API_BASE_URL}/admin/email-templates`, {
+        ...newTemplate,
+        variables: newTemplate.variables.filter(v => v.trim() !== '')
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast({
+        title: "Success",
+        description: "Email template created successfully",
+      });
+      
+      setIsCreatingTemplate(false);
+      setNewTemplate({
+        name: '',
+        subject: '',
+        htmlContent: '',
+        variables: [],
+        description: ''
+      });
+      fetchEmailTemplates();
+    } catch (error) {
+      console.error("Error creating template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create email template",
+        variant: "destructive"
+      });
+    }
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        damping: 15,
-        stiffness: 100,
-      },
-    },
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate) return;
+    
+    try {
+      const token = getToken();
+      await axios.put(`${API_BASE_URL}/admin/email-templates/${editingTemplate.id}`, {
+        name: editingTemplate.name,
+        subject: editingTemplate.subject,
+        htmlContent: editingTemplate.htmlContent,
+        variables: editingTemplate.variables,
+        description: editingTemplate.description
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast({
+        title: "Success",
+        description: "Email template updated successfully",
+      });
+      
+      setEditingTemplate(null);
+      fetchEmailTemplates();
+    } catch (error) {
+      console.error("Error updating template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update email template",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this template?")) return;
+    
+    try {
+      const token = getToken();
+      await axios.delete(`${API_BASE_URL}/admin/email-templates/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast({
+        title: "Success",
+        description: "Email template deleted successfully",
+      });
+      
+      fetchEmailTemplates();
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete email template",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveSystemSettings = async () => {
+    try {
+      // This would normally call an API to save system settings
+      // For now we'll just simulate success
+      setTimeout(() => {
+        toast({
+          title: "Success",
+          description: "System settings updated successfully",
+        });
+      }, 500);
+    } catch (error) {
+      console.error("Error saving system settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update system settings",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const addVariableField = () => {
+    if (editingTemplate) {
+      setEditingTemplate({
+        ...editingTemplate,
+        variables: [...editingTemplate.variables, '']
+      });
+    } else {
+      setNewTemplate({
+        ...newTemplate,
+        variables: [...newTemplate.variables, '']
+      });
+    }
+  };
+
+  const updateVariableField = (index: number, value: string) => {
+    if (editingTemplate) {
+      const updatedVars = [...editingTemplate.variables];
+      updatedVars[index] = value;
+      setEditingTemplate({
+        ...editingTemplate,
+        variables: updatedVars
+      });
+    } else {
+      const updatedVars = [...newTemplate.variables];
+      updatedVars[index] = value;
+      setNewTemplate({
+        ...newTemplate,
+        variables: updatedVars
+      });
+    }
+  };
+
+  const removeVariableField = (index: number) => {
+    if (editingTemplate) {
+      const updatedVars = [...editingTemplate.variables];
+      updatedVars.splice(index, 1);
+      setEditingTemplate({
+        ...editingTemplate,
+        variables: updatedVars
+      });
+    } else {
+      const updatedVars = [...newTemplate.variables];
+      updatedVars.splice(index, 1);
+      setNewTemplate({
+        ...newTemplate,
+        variables: updatedVars
+      });
+    }
+  };
+
+  const TemplateForm = ({ isEditing = false }: { isEditing?: boolean }) => {
+    const data = isEditing ? editingTemplate : newTemplate;
+    if (!data && isEditing) return null;
+    
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Template Name</Label>
+            <Input
+              id="name"
+              value={data?.name || ''}
+              onChange={(e) => isEditing
+                ? setEditingTemplate({...editingTemplate!, name: e.target.value})
+                : setNewTemplate({...newTemplate, name: e.target.value})
+              }
+              placeholder="Welcome Email"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="subject">Email Subject</Label>
+            <Input
+              id="subject"
+              value={data?.subject || ''}
+              onChange={(e) => isEditing
+                ? setEditingTemplate({...editingTemplate!, subject: e.target.value})
+                : setNewTemplate({...newTemplate, subject: e.target.value})
+              }
+              placeholder="Welcome to Rentalke!"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Input
+              id="description"
+              value={data?.description || ''}
+              onChange={(e) => isEditing
+                ? setEditingTemplate({...editingTemplate!, description: e.target.value})
+                : setNewTemplate({...newTemplate, description: e.target.value})
+              }
+              placeholder="Sent to new users after registration"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="htmlContent">Email Template Content (HTML)</Label>
+            </div>
+            <Textarea
+              id="htmlContent"
+              value={data?.htmlContent || ''}
+              onChange={(e) => isEditing
+                ? setEditingTemplate({...editingTemplate!, htmlContent: e.target.value})
+                : setNewTemplate({...newTemplate, htmlContent: e.target.value})
+              }
+              placeholder="<html><body><h1>Welcome {{name}}!</h1><p>Thank you for joining us.</p></body></html>"
+              rows={10}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label>Template Variables</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addVariableField}>
+                <Plus className="h-4 w-4 mr-1" /> Add Variable
+              </Button>
+            </div>
+            {data?.variables.map((variable, index) => (
+              <div key={index} className="flex gap-2">
+                <Input
+                  value={variable}
+                  onChange={(e) => updateVariableField(index, e.target.value)}
+                  placeholder="Variable name (e.g. name, email)"
+                />
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => removeVariableField(index)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => isEditing ? setEditingTemplate(null) : setIsCreatingTemplate(false)}
+          >
+            Cancel
+          </Button>
+          <Button onClick={isEditing ? handleUpdateTemplate : handleCreateTemplate}>
+            <Save className="mr-2 h-4 w-4" />
+            {isEditing ? 'Update Template' : 'Create Template'}
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your account settings and preferences
+        <p className="text-muted-foreground">
+          Manage system settings and configurations
         </p>
       </div>
-
-      <div className="flex flex-col md:flex-row gap-6">
-        <Card className="md:w-64 flex-shrink-0">
-          <CardContent className="p-4">
-            <Tabs
-              defaultValue={activeTab}
-              orientation="vertical"
-              className="w-full"
-              value={activeTab}
-              onValueChange={setActiveTab}
-            >
-              <TabsList className="flex flex-col items-start h-auto bg-transparent space-y-1">
-                <TabsTrigger
-                  value="account"
-                  className="w-full justify-start px-2 py-1.5 h-9"
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  Account
-                </TabsTrigger>
-                <TabsTrigger
-                  value="notifications"
-                  className="w-full justify-start px-2 py-1.5 h-9"
-                >
-                  <Bell className="mr-2 h-4 w-4" />
-                  Notifications
-                </TabsTrigger>
-                <TabsTrigger
-                  value="security"
-                  className="w-full justify-start px-2 py-1.5 h-9"
-                >
-                  <Shield className="mr-2 h-4 w-4" />
-                  Security
-                </TabsTrigger>
-                <TabsTrigger
-                  value="billing"
-                  className="w-full justify-start px-2 py-1.5 h-9"
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Billing
-                </TabsTrigger>
-                <TabsTrigger
-                  value="api"
-                  className="w-full justify-start px-2 py-1.5 h-9"
-                >
-                  <Globe className="mr-2 h-4 w-4" />
-                  API
-                </TabsTrigger>
-                <TabsTrigger
-                  value="help"
-                  className="w-full justify-start px-2 py-1.5 h-9"
-                >
-                  <HelpCircle className="mr-2 h-4 w-4" />
-                  Help & Support
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex-1"
-        >
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsContent value="account" className="mt-0 space-y-6">
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Profile</CardTitle>
-                    <CardDescription>
-                      Update your personal information
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex flex-col md:flex-row gap-6 items-start">
-                      <div className="flex flex-col items-center gap-2">
-                        <Avatar className="w-24 h-24">
-                          <AvatarImage src={userProfile.avatar} />
-                          <AvatarFallback>
-                            {userProfile.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <Button variant="outline" size="sm">
-                          Change avatar
-                        </Button>
-                      </div>
-                      <div className="grid gap-4 flex-1">
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="firstName">First name</Label>
-                            <Input id="firstName" defaultValue="John" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="lastName">Last name</Label>
-                            <Input id="lastName" defaultValue="Doe" />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="email">Email address</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            defaultValue={userProfile.email}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="role">Role</Label>
-                          <Select defaultValue={userProfile.role}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Admin">Admin</SelectItem>
-                              <SelectItem value="Manager">Manager</SelectItem>
-                              <SelectItem value="User">User</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3">
+          <TabsTrigger value="email-templates">
+            <Mail className="mr-2 h-4 w-4" />
+            Email Templates
+          </TabsTrigger>
+          <TabsTrigger value="system">
+            <SettingsIcon className="mr-2 h-4 w-4" />
+            System Settings
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="mr-2 h-4 w-4" />
+            Notification Settings
+          </TabsTrigger>
+        </TabsList>
+        
+        {/* Email Templates Tab */}
+        <TabsContent value="email-templates" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Email Templates</CardTitle>
+                <CardDescription>
+                  Manage email templates for automated communications
+                </CardDescription>
+              </div>
+              {!isCreatingTemplate && !editingTemplate && (
+                <Button onClick={() => setIsCreatingTemplate(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Template
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {isCreatingTemplate ? (
+                <TemplateForm />
+              ) : editingTemplate ? (
+                <TemplateForm isEditing={true} />
+              ) : (
+                <div className="space-y-4">
+                  {isLoading ? (
+                    <div className="text-center py-4">Loading templates...</div>
+                  ) : templates.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground">No email templates found</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-2"
+                        onClick={() => setIsCreatingTemplate(true)}
+                      >
+                        Create your first template
+                      </Button>
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-end">
-                    <Button onClick={handleSave} disabled={loading}>
-                      {loading ? "Saving..." : "Save changes"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Preferences</CardTitle>
-                    <CardDescription>
-                      Customize your dashboard experience
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="language">Language</Label>
-                      <Select defaultValue="en">
-                        <SelectTrigger id="language">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="fr">French</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                          <SelectItem value="de">German</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="timezone">Timezone</Label>
-                      <Select defaultValue="utc-8">
-                        <SelectTrigger id="timezone">
-                          <SelectValue placeholder="Select timezone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="utc-8">Pacific Time (UTC-8)</SelectItem>
-                          <SelectItem value="utc-5">Eastern Time (UTC-5)</SelectItem>
-                          <SelectItem value="utc+0">UTC</SelectItem>
-                          <SelectItem value="utc+1">Central European Time (UTC+1)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="theme">Dark Mode</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Toggle dark mode on or off
-                        </p>
-                      </div>
-                      <Switch id="theme" />
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-end">
-                    <Button onClick={handleSave} disabled={loading}>
-                      {loading ? "Saving..." : "Save preferences"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="notifications" className="mt-0">
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Notification Settings</CardTitle>
-                    <CardDescription>
-                      Manage how and when you receive notifications
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                  ) : (
                     <div className="space-y-4">
-                      <h3 className="text-sm font-medium">Email Notifications</h3>
-                      <Separator />
-                      <div className="space-y-2">
-                        {["system-updates", "security-alerts", "account-activity", "new-messages"].map((id) => (
-                          <div key={id} className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                              <Label htmlFor={id} className="cursor-pointer">
-                                {id === "system-updates" && "System Updates"}
-                                {id === "security-alerts" && "Security Alerts"}
-                                {id === "account-activity" && "Account Activity"}
-                                {id === "new-messages" && "New Messages"}
-                              </Label>
-                              <p className="text-sm text-muted-foreground">
-                                {id === "system-updates" && "Receive updates about system changes"}
-                                {id === "security-alerts" && "Get notified about security issues"}
-                                {id === "account-activity" && "Activity related to your account"}
-                                {id === "new-messages" && "Notifications for new messages"}
-                              </p>
+                      {templates.map((template) => (
+                        <Card key={template.id} className="overflow-hidden">
+                          <div className="p-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h3 className="font-medium">{template.name}</h3>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {template.description || 'No description provided'}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setEditingTemplate(template)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleDeleteTemplate(template.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
                             </div>
-                            <Switch id={id} defaultChecked={id !== "new-messages"} />
+                            <p className="text-sm mt-2">
+                              <span className="font-medium">Subject:</span> {template.subject}
+                            </p>
+                            <div className="mt-2">
+                              <span className="text-sm font-medium">Variables:</span>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {template.variables.map((variable, i) => (
+                                  <span key={i} className="text-xs bg-muted px-2 py-1 rounded-md">
+                                    {variable}
+                                  </span>
+                                ))}
+                                {template.variables.length === 0 && (
+                                  <span className="text-xs text-muted-foreground">No variables defined</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        </Card>
+                      ))}
                     </div>
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-medium">Push Notifications</h3>
-                      <Separator />
-                      <RadioGroup defaultValue="all">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="all" id="all" />
-                          <Label htmlFor="all">All notifications</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="important" id="important" />
-                          <Label htmlFor="important">Important only</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="none" id="none" />
-                          <Label htmlFor="none">None</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-end">
-                    <Button onClick={handleSave} disabled={loading}>
-                      {loading ? "Saving..." : "Save notification settings"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="security" className="mt-0">
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Password</CardTitle>
-                    <CardDescription>
-                      Update your password
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* System Settings Tab */}
+        <TabsContent value="system" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Settings</CardTitle>
+              <CardDescription>
+                Configure global system settings and preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium flex items-center">
+                    <Globe className="mr-2 h-5 w-5" />
+                    General Settings
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="current-password">Current password</Label>
-                      <div className="relative">
-                        <Input
-                          id="current-password"
-                          type={showCurrentPassword ? "text" : "password"}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3 py-2"
-                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        >
-                          {showCurrentPassword ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">New password</Label>
-                      <div className="relative">
-                        <Input
-                          id="new-password"
-                          type={showNewPassword ? "text" : "password"}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3 py-2"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                        >
-                          {showNewPassword ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm password</Label>
+                      <Label htmlFor="siteName">Site Name</Label>
                       <Input
-                        id="confirm-password"
-                        type="password"
+                        id="siteName"
+                        value={systemSettings.siteName}
+                        onChange={(e) => setSystemSettings({...systemSettings, siteName: e.target.value})}
                       />
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-end">
-                    <Button onClick={handleSave} disabled={loading}>
-                      {loading ? "Updating..." : "Update password"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-
-              <motion.div variants={itemVariants} className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Two-Factor Authentication</CardTitle>
-                    <CardDescription>
-                      Add an extra layer of security to your account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="logo">Logo URL</Label>
+                      <Input
+                        id="logo"
+                        value={systemSettings.logo}
+                        onChange={(e) => setSystemSettings({...systemSettings, logo: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryColor">Primary Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="primaryColor"
+                          value={systemSettings.primaryColor}
+                          onChange={(e) => setSystemSettings({...systemSettings, primaryColor: e.target.value})}
+                        />
+                        <input
+                          type="color"
+                          value={systemSettings.primaryColor}
+                          onChange={(e) => setSystemSettings({...systemSettings, primaryColor: e.target.value})}
+                          className="h-10 w-10 rounded border p-1"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="defaultBookingDuration">Default Booking Duration (days)</Label>
+                      <Input
+                        id="defaultBookingDuration"
+                        type="number"
+                        value={systemSettings.defaultBookingDuration}
+                        onChange={(e) => setSystemSettings({
+                          ...systemSettings, 
+                          defaultBookingDuration: parseInt(e.target.value) || 1
+                        })}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium flex items-center">
+                    <Shield className="mr-2 h-5 w-5" />
+                    System Status
+                  </h3>
+                  
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Two-factor authentication</Label>
+                      <div>
+                        <p className="font-medium">Maintenance Mode</p>
                         <p className="text-sm text-muted-foreground">
-                          Add an extra layer of security to your account
+                          When enabled, the system will be unavailable to clients
                         </p>
                       </div>
-                      <Switch defaultChecked={false} />
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline">Learn more</Button>
-                    <Button onClick={handleSave} disabled={loading}>
-                      {loading ? "Saving..." : "Save changes"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="billing" className="mt-0">
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Billing & Subscription</CardTitle>
-                    <CardDescription>
-                      Manage your billing information and subscription
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-6 border rounded-lg bg-muted/50">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="font-semibold">Premium Plan</h3>
-                          <p className="text-sm text-muted-foreground">$49.99/month</p>
-                        </div>
-                        <Badge>Active</Badge>
-                      </div>
-                      <div className="mt-4">
-                        <p className="text-sm">Your next billing date is <strong>April 15, 2024</strong></p>
-                      </div>
-                      <div className="mt-4 flex gap-2">
-                        <Button variant="outline" size="sm">Change Plan</Button>
-                        <Button variant="outline" size="sm" className="text-destructive">Cancel Subscription</Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Payment Method</h3>
-                      <div className="p-4 border rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CreditCard className="h-5 w-5" />
-                          <div>
-                            <p className="font-medium">•••• •••• •••• 4242</p>
-                            <p className="text-sm text-muted-foreground">Expires 12/2025</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">Change</Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Billing Address</h3>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="billingCountry">Country</Label>
-                          <Select defaultValue="us">
-                            <SelectTrigger id="billingCountry">
-                              <SelectValue placeholder="Select country" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="us">United States</SelectItem>
-                              <SelectItem value="ca">Canada</SelectItem>
-                              <SelectItem value="uk">United Kingdom</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="billingZip">Postal Code</Label>
-                          <Input id="billingZip" defaultValue="10001" />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-end">
-                    <Button onClick={handleSave} disabled={loading}>
-                      <Save className="mr-2 h-4 w-4" />
-                      {loading ? "Saving..." : "Save changes"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="api" className="mt-0">
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>API Keys</CardTitle>
-                    <CardDescription>
-                      Manage your API keys for integration
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Your API Key</Label>
-                      <div className="flex">
-                        <Input
-                          value="sk_test_51LxGTz3chmxyzAbC123DEFGhijklMNOP"
-                          readOnly
-                          type="password"
-                        />
-                        <Button variant="outline" className="ml-2">
-                          Show
-                        </Button>
-                        <Button variant="outline" className="ml-2">
-                          Copy
-                        </Button>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Use this key to authenticate API requests from your server
-                      </p>
-                    </div>
-                    <div className="space-y-2 mt-6">
-                      <Label>Webhook URL</Label>
-                      <Input
-                        placeholder="https://your-server.com/webhooks/rentalke"
+                      <Switch
+                        checked={systemSettings.maintenanceMode}
+                        onCheckedChange={(checked) => setSystemSettings({...systemSettings, maintenanceMode: checked})}
                       />
-                      <p className="text-sm text-muted-foreground mt-2">
-                        We'll send event notifications to this URL
-                      </p>
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline">
-                      Regenerate Key
-                    </Button>
-                    <Button onClick={handleSave} disabled={loading}>
-                      {loading ? "Saving..." : "Save changes"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="help" className="mt-0">
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Help & Support</CardTitle>
-                    <CardDescription>
-                      Get help with RentalKE admin dashboard
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <h3 className="font-medium">Documentation</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Find answers to common questions in our documentation.
-                      </p>
-                      <Button variant="outline" className="mt-2">
-                        View Documentation
-                      </Button>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                      <h3 className="font-medium">Contact Support</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Can't find what you're looking for? Contact our support team.
-                      </p>
-                      <div className="grid gap-4 mt-2">
-                        <div className="flex items-center gap-3">
-                          <Mail className="h-5 w-5 text-muted-foreground" />
-                          <span>support@rentalke.com</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Smartphone className="h-5 w-5 text-muted-foreground" />
-                          <span>+1 (555) 123-4567</span>
-                        </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Debug Mode</p>
+                        <p className="text-sm text-muted-foreground">
+                          Enable detailed error logging (not recommended for production)
+                        </p>
                       </div>
+                      <Switch
+                        checked={systemSettings.debugMode}
+                        onCheckedChange={(checked) => setSystemSettings({...systemSettings, debugMode: checked})}
+                      />
                     </div>
-                    <Separator />
-                    <div className="space-y-2">
-                      <h3 className="font-medium">Send a Message</h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="subject">Subject</Label>
-                        <Input id="subject" placeholder="What can we help you with?" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button onClick={handleSaveSystemSettings}>
+                <Save className="mr-2 h-4 w-4" />
+                Save System Settings
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        {/* Notification Settings Tab */}
+        <TabsContent value="notifications" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Settings</CardTitle>
+              <CardDescription>
+                Configure how notifications are sent to users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium flex items-center">
+                    <Mail className="mr-2 h-5 w-5" />
+                    Email Notifications
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Enable Email Notifications</p>
+                        <p className="text-sm text-muted-foreground">
+                          Send notifications via email to users
+                        </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="message">Message</Label>
-                        <Textarea
-                          id="message"
-                          placeholder="Describe your issue in detail..."
-                          className="min-h-[100px]"
-                        />
-                      </div>
-                      <Button className="mt-2">
-                        Send Message
-                      </Button>
+                      <Switch
+                        checked={systemSettings.emailNotifications}
+                        onCheckedChange={(checked) => setSystemSettings({...systemSettings, emailNotifications: checked})}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </TabsContent>
-          </Tabs>
-        </motion.div>
-      </div>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium flex items-center">
+                    <Smartphone className="mr-2 h-5 w-5" />
+                    SMS Notifications
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Enable SMS Notifications</p>
+                        <p className="text-sm text-muted-foreground">
+                          Send notifications via SMS to users (additional charges may apply)
+                        </p>
+                      </div>
+                      <Switch
+                        checked={systemSettings.smsNotifications}
+                        onCheckedChange={(checked) => setSystemSettings({...systemSettings, smsNotifications: checked})}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-md text-yellow-800 flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium">SMS Provider Configuration Required</p>
+                    <p className="text-sm mt-1">
+                      To enable SMS notifications, you need to configure an SMS provider in the system settings.
+                      Contact your administrator for more information.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button onClick={handleSaveSystemSettings}>
+                <Save className="mr-2 h-4 w-4" />
+                Save Notification Settings
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
 
-export default Settings;
+export default SettingsPage;
