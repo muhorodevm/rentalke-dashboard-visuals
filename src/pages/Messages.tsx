@@ -1,658 +1,320 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
-import { messagesData } from "@/data/dummyData"; // Keeping as fallback
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { Loader2, Search, Send, Smile, ThumbsUp, Heart, Award } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, 
-  Send, 
-  Paperclip, 
-  Phone, 
-  Video, 
-  MoreHorizontal, 
-  Star, 
-  StarOff, 
-  UserPlus,
-  Loader2
-} from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { initializeSocket, sendMessage, markMessageAsRead, sendTypingStatus } from "@/utils/socket";
-import { useAuth } from "@/context/AuthContext";
-import axios from "axios";
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import EmptyState from '@/components/messages/EmptyState';
+import MessageItem from '@/components/messages/MessageItem';
+import ContactsList from '@/components/messages/ContactsList';
+import ConversationHeader from '@/components/messages/ConversationHeader';
 
-// Define message type to match backend
-interface Message {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  message: string;
-  status: 'SENT' | 'DELIVERED' | 'READ';
-  isRead: boolean;
-  createdAt: string;
-  updatedAt: string;
-  sender?: User;
-}
+// Mock data - would be replaced with real API calls
+const mockContacts = [
+  { id: '1', name: 'Jane Cooper', role: 'Property Manager', avatar: 'https://i.pravatar.cc/150?img=1', status: 'online', unread: 3 },
+  { id: '2', name: 'Robert Fox', role: 'Tenant', avatar: 'https://i.pravatar.cc/150?img=2', status: 'offline', lastSeen: '3h ago' },
+  { id: '3', name: 'Esther Howard', role: 'Admin', avatar: 'https://i.pravatar.cc/150?img=3', status: 'away', lastSeen: '1h ago' },
+  { id: '4', name: 'Leslie Alexander', role: 'Maintenance', avatar: 'https://i.pravatar.cc/150?img=4', status: 'online' },
+  { id: '5', name: 'Guy Hawkins', role: 'Tenant', avatar: 'https://i.pravatar.cc/150?img=5', status: 'offline', lastSeen: '1d ago' },
+];
 
-// Define user object structure
-interface User {
-  id: string;
-  firstName: string | null;
-  lastName: string | null;
-  email: string;
-  role: string;
-  profileImage: string | null;
-}
+const mockConversations = {
+  '1': [
+    { id: 'm1', sender: '1', text: 'Hello, I have a question about the rent payment', time: '10:30 AM', status: 'read', reactions: ['👍'] },
+    { id: 'm2', sender: 'me', text: 'Sure, what would you like to know?', time: '10:32 AM', status: 'delivered' },
+    { id: 'm3', sender: '1', text: 'Can I pay with a credit card this month?', time: '10:33 AM', status: 'read' },
+    { id: 'm4', sender: 'me', text: 'Yes, we accept credit card payments. There is a 2% processing fee.', time: '10:35 AM', status: 'delivered' },
+  ],
+  '3': [
+    { id: 'm1', sender: '3', text: 'The new tenant portal looks great!', time: '9:15 AM', status: 'read', reactions: ['❤️'] },
+    { id: 'm2', sender: 'me', text: 'Thank you! We worked hard on it.', time: '9:20 AM', status: 'read' },
+  ],
+};
 
-// Define conversation type
-interface Conversation {
-  user: User;
-  latestMessage: Message;
-  unreadCount: number;
-}
-
-const Messages: React.FC = () => {
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [messageText, setMessageText] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [starredContacts, setStarredContacts] = useState<string[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+const Messages = () => {
   const { toast } = useToast();
   const { user, getToken } = useAuth();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "https://rentalke-server-2.onrender.com/api/v1";
+  const [activeTab, setActiveTab] = useState('all');
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+  
+  // Filter contacts based on search query and tab
+  const filteredContacts = mockContacts.filter(contact => {
+    const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (activeTab === 'all') return matchesSearch;
+    if (activeTab === 'unread') return matchesSearch && contact.unread;
+    if (activeTab === 'online') return matchesSearch && contact.status === 'online';
+    return matchesSearch;
+  });
 
-  // Initialize socket connection when component mounts
+  // Load messages for selected contact
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      const socket = initializeSocket(token);
-      
-      // Setup socket event listeners
-      socket.on('new_message', (data: { message: Message; sender: User }) => {
-        if (selectedConversation && 
-            (data.message.senderId === selectedConversation.user.id || 
-             data.message.receiverId === selectedConversation.user.id)) {
-          setMessages(prev => [...prev, data.message]);
-          markMessageAsRead(data.message.id);
-        }
+    if (selectedContact) {
+      setLoading(true);
+      // Simulate API call
+      setTimeout(() => {
+        setMessages(mockConversations[selectedContact.id] || []);
+        setLoading(false);
         
-        // Update conversations list
-        fetchConversations();
-      });
-      
-      // Clean up socket connection on unmount
-      return () => {
-        socket.off('new_message');
-      };
+        // Simulate typing indicator
+        if (selectedContact.id === '1') {
+          setTimeout(() => {
+            setIsTyping(true);
+            setTimeout(() => {
+              setIsTyping(false);
+              addNewIncomingMessage();
+            }, 3000);
+          }, 5000);
+        }
+      }, 800);
     }
-  }, [getToken, selectedConversation]);
+  }, [selectedContact]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fetch conversations on component mount
-  useEffect(() => {
-    fetchConversations();
-  }, [getToken]);
-
-  // Fetch messages when a conversation is selected
-  useEffect(() => {
-    if (selectedConversation) {
-      fetchMessages(selectedConversation.user.id);
-    }
-  }, [selectedConversation]);
-
-  const fetchConversations = async () => {
-    setIsLoading(true);
-    try {
-      const token = getToken();
-      const response = await axios.get(`${API_BASE_URL}/admin/messages/conversations`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setConversations(response.data.conversations);
-      
-      // If no conversation is selected and there are conversations, select the first one
-      if (!selectedConversation && response.data.conversations.length > 0) {
-        setSelectedConversation(response.data.conversations[0]);
-      }
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load conversations",
-        variant: "destructive"
-      });
-      // Set fallback data for demo purposes
-      setConversations(messagesData.map(msg => ({
-        user: {
-          id: `fallback-${msg.id}`,
-          firstName: msg.sender.name.split(' ')[0],
-          lastName: msg.sender.name.split(' ')[1] || '',
-          email: `${msg.sender.name.toLowerCase().replace(' ', '.')}@example.com`,
-          role: msg.sender.role,
-          profileImage: msg.sender.avatar
-        },
-        latestMessage: {
-          id: `msg-${msg.id}`,
-          senderId: `fallback-${msg.id}`,
-          receiverId: user?.id || 'admin',
-          message: msg.message,
-          status: 'SENT',
-          isRead: msg.read,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        unreadCount: msg.read ? 0 : 1
-      })));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchMessages = async (userId: string) => {
-    setLoadingMessages(true);
-    try {
-      const token = getToken();
-      const response = await axios.get(`${API_BASE_URL}/admin/messages/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessages(response.data.messages);
-      
-      // Mark all unread messages as read
-      const unreadMessages = response.data.messages.filter(
-        (msg: Message) => !msg.isRead && msg.senderId === userId
-      );
-      unreadMessages.forEach((msg: Message) => {
-        markMessageAsRead(msg.id);
-      });
-      
-      // Update conversations to reflect read messages
-      if (unreadMessages.length > 0) {
-        fetchConversations();
-      }
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive"
-      });
-      // Set fallback data
-      setMessages([
-        {
-          id: 'fallback-msg-1',
-          senderId: selectedConversation?.user.id || 'fallback-user',
-          receiverId: user?.id || 'admin',
-          message: 'This is a fallback message since we could not connect to the server.',
-          status: 'SENT',
-          isRead: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'fallback-msg-2',
-          senderId: user?.id || 'admin',
-          receiverId: selectedConversation?.user.id || 'fallback-user',
-          message: 'This is a fallback reply.',
-          status: 'DELIVERED',
-          isRead: true,
-          createdAt: new Date(Date.now() + 60000).toISOString(),
-          updatedAt: new Date(Date.now() + 60000).toISOString()
-        }
-      ]);
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedConversation) return;
-    
-    try {
-      // Send the message through socket
-      sendMessage(selectedConversation.user.id, messageText);
-      
-      // Optimistically add message to UI
-      const newMessage: Message = {
-        id: `temp-${Date.now()}`,
-        senderId: user?.id || 'admin',
-        receiverId: selectedConversation.user.id,
-        message: messageText,
-        status: 'SENT',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+  const addNewIncomingMessage = () => {
+    if (selectedContact && selectedContact.id === '1') {
+      const newMsg = {
+        id: `m${messages.length + 1}`,
+        sender: '1',
+        text: 'Thanks for the information! I'll make the payment today.',
+        time: '10:40 AM',
+        status: 'received'
       };
-      
-      setMessages(prev => [...prev, newMessage]);
-      setMessageText("");
-      
-      // Clear typing indicator
-      if (typingTimeout) {
-        clearTimeout(typingTimeout);
-        setTypingTimeout(null);
-      }
-      sendTypingStatus(selectedConversation.user.id, false);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive"
-      });
+      setMessages([...messages, newMsg]);
     }
   };
 
-  const toggleStar = async (userId: string) => {
-    setStarredContacts(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId) 
-        : [...prev, userId]
-    );
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedContact) return;
     
-    try {
-      const token = getToken();
-      await axios.post(`${API_BASE_URL}/admin/contacts/star/${userId}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    } catch (error) {
-      console.error("Error starring contact:", error);
-      // Revert on error
-      setStarredContacts(prev => 
-        prev.includes(userId) 
-          ? prev.filter(id => id !== userId) 
-          : [...prev, userId]
+    const newMsg = {
+      id: `m${messages.length + 1}`,
+      sender: 'me',
+      text: newMessage,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'sent'
+    };
+    
+    setMessages([...messages, newMsg]);
+    setNewMessage('');
+    
+    // Simulate message status updates
+    setTimeout(() => {
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === newMsg.id ? {...msg, status: 'delivered'} : msg
+        )
       );
-    }
-  };
-
-  const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageText(e.target.value);
-    
-    if (!selectedConversation) return;
-    
-    // Send typing indicator
-    if (!isTyping) {
-      setIsTyping(true);
-      sendTypingStatus(selectedConversation.user.id, true);
-    }
-    
-    // Clear previous timeout
-    if (typingTimeout) {
-      clearTimeout(typingTimeout);
-    }
-    
-    // Set timeout to stop typing indicator after 2 seconds of inactivity
-    const timeout = setTimeout(() => {
-      setIsTyping(false);
-      sendTypingStatus(selectedConversation.user.id, false);
-    }, 2000);
-    
-    setTypingTimeout(timeout);
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatMessageDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString(undefined, { 
-        weekday: 'long', 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    }
-  };
-
-  const getGroupedMessages = () => {
-    const groups: Record<string, Message[]> = {};
-    
-    messages.forEach(message => {
-      const date = formatMessageDate(message.createdAt);
-      if (!groups[date]) {
-        groups[date] = [];
-      }
-      groups[date].push(message);
-    });
-    
-    return Object.entries(groups).map(([date, messages]) => ({
-      date,
-      messages
-    }));
-  };
-
-  const getUserName = (user: User) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    } else if (user.firstName) {
-      return user.firstName;
-    } else {
-      return user.email.split('@')[0];
-    }
-  };
-
-  const getUserInitials = (user: User) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
-    } else if (user.firstName) {
-      return user.firstName.substring(0, 2).toUpperCase();
-    } else {
-      return user.email.substring(0, 2).toUpperCase();
-    }
-  };
-
-  const filteredConversations = conversations.filter(
-    conversation => {
-      const userName = getUserName(conversation.user).toLowerCase();
-      const userEmail = conversation.user.email.toLowerCase();
-      const searchLower = searchQuery.toLowerCase();
       
-      return userName.includes(searchLower) || 
-             userEmail.includes(searchLower) ||
-             conversation.latestMessage.message.toLowerCase().includes(searchLower);
-    }
-  );
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        when: "beforeChildren",
-        staggerChildren: 0.1,
-      },
-    },
+      setTimeout(() => {
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === newMsg.id ? {...msg, status: 'read'} : msg
+          )
+        );
+      }, 1000);
+    }, 1000);
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        damping: 15,
-        stiffness: 100,
-      },
-    },
+  const handleAddReaction = (messageId, emoji) => {
+    setMessages(prev => 
+      prev.map(msg => 
+        msg.id === messageId 
+          ? {...msg, reactions: [...(msg.reactions || []), emoji]} 
+          : msg
+      )
+    );
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
-    <div className="p-6 h-[calc(100vh-4rem)]">
-      <div className="flex flex-col h-full gap-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
-          <p className="text-muted-foreground mt-1">
-            Communicate with your team and clients
-          </p>
-        </div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 h-[calc(100%-5rem)]"
-        >
-          {/* Contacts List */}
-          <motion.div variants={itemVariants} className="lg:col-span-1">
-            <Card className="h-full flex flex-col">
-              <CardHeader className="px-4 py-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg">Contacts</CardTitle>
-                  <Button variant="ghost" size="icon">
-                    <UserPlus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search contacts..." 
-                    className="pl-8"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </CardHeader>
-              <Tabs defaultValue="all" className="px-4">
-                <TabsList className="w-full grid grid-cols-3">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="unread">Unread</TabsTrigger>
-                  <TabsTrigger value="starred">Starred</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <CardContent className="flex-1 overflow-hidden px-2 py-2">
-                {isLoading ? (
-                  <div className="h-full flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : filteredConversations.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-center p-4">
-                    <p className="text-muted-foreground">
-                      {searchQuery ? "No contacts match your search" : "No conversations yet"}
-                    </p>
-                  </div>
-                ) : (
-                  <ScrollArea className="h-full px-2">
-                    <div className="space-y-1">
-                      {filteredConversations.map((conversation) => (
-                        <div
-                          key={conversation.user.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
-                            selectedConversation?.user.id === conversation.user.id
-                              ? "bg-muted"
-                              : ""
-                          }`}
-                          onClick={() => setSelectedConversation(conversation)}
-                        >
-                          <Avatar className="w-10 h-10 flex-shrink-0">
-                            <AvatarImage src={conversation.user.profileImage || undefined} />
-                            <AvatarFallback>
-                              {getUserInitials(conversation.user)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-center">
-                              <p className="font-medium truncate">
-                                {getUserName(conversation.user)}
-                              </p>
-                              <div className="flex items-center">
-                                {conversation.unreadCount > 0 && (
-                                  <Badge variant="default" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">
-                                    {conversation.unreadCount}
-                                  </Badge>
-                                )}
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleStar(conversation.user.id);
-                                  }} 
-                                  className="ml-2 text-muted-foreground hover:text-amber-400"
-                                >
-                                  {starredContacts.includes(conversation.user.id) ? (
-                                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                                  ) : (
-                                    <StarOff className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {conversation.latestMessage.message}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatTime(conversation.latestMessage.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Chat Area */}
-          <motion.div variants={itemVariants} className="lg:col-span-2">
-            <Card className="h-full flex flex-col">
-              {selectedConversation ? (
-                <>
-                  <CardHeader className="border-b flex-none px-6 py-4">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={selectedConversation.user.profileImage || undefined} />
-                          <AvatarFallback>
-                            {getUserInitials(selectedConversation.user)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <CardTitle className="text-lg">{getUserName(selectedConversation.user)}</CardTitle>
-                          <CardDescription>{selectedConversation.user.role}</CardDescription>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon">
-                          <Phone className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <Video className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 overflow-hidden p-0">
-                    {loadingMessages ? (
-                      <div className="h-full flex items-center justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <ScrollArea className="h-full p-6">
-                        {getGroupedMessages().map((group, groupIndex) => (
-                          <div key={groupIndex} className="space-y-4 mb-6">
-                            <div className="flex justify-center">
-                              <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">
-                                {group.date}
-                              </span>
-                            </div>
-                            {group.messages.map((message, messageIndex) => (
-                              <div 
-                                key={message.id} 
-                                className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
-                              >
-                                <div 
-                                  className={`p-3 rounded-lg max-w-[80%] ${
-                                    message.senderId === user?.id 
-                                      ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                                      : 'bg-muted rounded-tl-none'
-                                  }`}
-                                >
-                                  <p className="text-sm">{message.message}</p>
-                                  <span 
-                                    className={`text-xs ${
-                                      message.senderId === user?.id 
-                                        ? 'text-primary-foreground/80' 
-                                        : 'text-muted-foreground'
-                                    }`}
-                                  >
-                                    {formatTime(message.createdAt)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                      </ScrollArea>
-                    )}
-                  </CardContent>
-                  <CardFooter className="border-t p-4 flex-none">
-                    <div className="flex items-center gap-2 w-full">
-                      <Button variant="ghost" size="icon" className="rounded-full">
-                        <Paperclip className="h-4 w-4" />
-                      </Button>
-                      <Textarea
-                        placeholder="Type your message..."
-                        className="flex-1 min-h-10 max-h-32"
-                        value={messageText}
-                        onChange={handleTyping}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                      />
-                      <Button 
-                        size="icon" 
-                        className="rounded-full" 
-                        onClick={handleSendMessage}
-                        disabled={!messageText.trim()}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-                  <div className="mb-4 p-4 rounded-full bg-muted">
-                    <Send className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">Your Messages</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Select a conversation or start a new one
-                  </p>
-                  <Button>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    New Message
-                  </Button>
-                </div>
-              )}
-            </Card>
-          </motion.div>
-        </motion.div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
+        <p className="text-muted-foreground mt-1">
+          Communicate with your team and tenants.
+        </p>
       </div>
+
+      <Card className="border shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 h-[calc(80vh-13rem)]">
+          {/* Contacts Side */}
+          <div className="border-r md:col-span-1">
+            <CardHeader className="p-4">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search conversations..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </CardHeader>
+            
+            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="px-4">
+              <TabsList className="grid grid-cols-3 mb-2">
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="unread">Unread</TabsTrigger>
+                <TabsTrigger value="online">Online</TabsTrigger>
+              </TabsList>
+              
+              <ScrollArea className="h-[calc(80vh-20rem)]">
+                <ContactsList 
+                  contacts={filteredContacts}
+                  selectedContact={selectedContact}
+                  onSelectContact={(contact) => setSelectedContact(contact)}
+                />
+                
+                {filteredContacts.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No contacts found
+                  </div>
+                )}
+              </ScrollArea>
+            </Tabs>
+          </div>
+          
+          {/* Chat Area */}
+          <div className="md:col-span-2 flex flex-col">
+            {selectedContact ? (
+              <>
+                <ConversationHeader contact={selectedContact} />
+                
+                <ScrollArea className="flex-1 p-4">
+                  {loading ? (
+                    <div className="flex justify-center items-center h-full">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : messages.length > 0 ? (
+                    <div className="space-y-4">
+                      <AnimatePresence>
+                        {messages.map((message) => (
+                          <MessageItem 
+                            key={message.id}
+                            message={message}
+                            contact={selectedContact}
+                            onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
+                          />
+                        ))}
+                      </AnimatePresence>
+                      
+                      {isTyping && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex items-center gap-2 text-sm text-muted-foreground"
+                        >
+                          <div className="flex gap-1">
+                            <span className="animate-bounce delay-0 h-2 w-2 rounded-full bg-gray-400"></span>
+                            <span className="animate-bounce delay-150 h-2 w-2 rounded-full bg-gray-400"></span>
+                            <span className="animate-bounce delay-300 h-2 w-2 rounded-full bg-gray-400"></span>
+                          </div>
+                          {selectedContact.name} is typing...
+                        </motion.div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  ) : (
+                    <div className="flex justify-center items-center h-full">
+                      <div className="text-center">
+                        <p className="text-muted-foreground">No messages yet</p>
+                        <p className="text-sm text-muted-foreground mt-1">Send a message to start the conversation</p>
+                      </div>
+                    </div>
+                  )}
+                </ScrollArea>
+                
+                <CardFooter className="p-4 border-t">
+                  <div className="flex items-center gap-2 w-full">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="shrink-0">
+                          <Smile className="h-5 w-5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64" align="start">
+                        <div className="grid grid-cols-6 gap-2">
+                          {['😊', '😂', '👍', '❤️', '🎉', '🔥', '👏', '🙏', '💯', '⭐', '❓', '⚡'].map(emoji => (
+                            <button
+                              key={emoji}
+                              className="text-2xl p-2 hover:bg-muted rounded-md"
+                              onClick={() => {
+                                setNewMessage(prev => prev + emoji);
+                              }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    
+                    <Input
+                      placeholder="Type your message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      className="flex-1"
+                    />
+                    
+                    <Button 
+                      disabled={!newMessage.trim()}
+                      onClick={handleSendMessage}
+                      className="shrink-0"
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardFooter>
+              </>
+            ) : (
+              <EmptyState onNewConversation={() => {
+                if (filteredContacts.length > 0) {
+                  setSelectedContact(filteredContacts[0]);
+                } else {
+                  toast({
+                    title: "No contacts available",
+                    description: "Please add contacts to start a conversation."
+                  });
+                }
+              }} />
+            )}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };
