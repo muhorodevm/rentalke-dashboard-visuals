@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -21,41 +21,369 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { messagesData } from "@/data/dummyData";
-import { Search, Send, Paperclip, Phone, Video, MoreHorizontal, Star, StarOff, UserPlus } from "lucide-react";
+import { messagesData } from "@/data/dummyData"; // Keeping as fallback
+import { 
+  Search, 
+  Send, 
+  Paperclip, 
+  Phone, 
+  Video, 
+  MoreHorizontal, 
+  Star, 
+  StarOff, 
+  UserPlus,
+  Loader2
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { initializeSocket, sendMessage, markMessageAsRead, sendTypingStatus } from "@/utils/socket";
+import { useAuth } from "@/context/AuthContext";
+import axios from "axios";
+
+// Define message type to match backend
+interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  status: 'SENT' | 'DELIVERED' | 'READ';
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sender?: User;
+}
+
+// Define user object structure
+interface User {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  role: string;
+  profileImage: string | null;
+}
+
+// Define conversation type
+interface Conversation {
+  user: User;
+  latestMessage: Message;
+  unreadCount: number;
+}
 
 const Messages: React.FC = () => {
-  const [selectedMessage, setSelectedMessage] = useState(messagesData[0]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [starredContacts, setStarredContacts] = useState<string[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
-  const [starredContacts, setStarredContacts] = useState<number[]>([1, 3]);
+  const { user, token } = useAuth();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "https://rentalke-server-2.onrender.com/api/v1";
 
-  const toggleStar = (id: number) => {
-    setStarredContacts(prev => 
-      prev.includes(id) 
-        ? prev.filter(contactId => contactId !== id) 
-        : [...prev, id]
-    );
+  // Initialize socket connection when component mounts
+  useEffect(() => {
+    if (token) {
+      const socket = initializeSocket(token);
+      
+      // Setup socket event listeners
+      socket.on('new_message', (data: { message: Message; sender: User }) => {
+        if (selectedConversation && 
+            (data.message.senderId === selectedConversation.user.id || 
+             data.message.receiverId === selectedConversation.user.id)) {
+          setMessages(prev => [...prev, data.message]);
+          markMessageAsRead(data.message.id);
+        }
+        
+        // Update conversations list
+        fetchConversations();
+      });
+      
+      // Clean up socket connection on unmount
+      return () => {
+        socket.off('new_message');
+      };
+    }
+  }, [token, selectedConversation]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Fetch conversations on component mount
+  useEffect(() => {
+    fetchConversations();
+  }, [token]);
+
+  // Fetch messages when a conversation is selected
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.user.id);
+    }
+  }, [selectedConversation]);
+
+  const fetchConversations = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/messages/conversations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setConversations(response.data.conversations);
+      
+      // If no conversation is selected and there are conversations, select the first one
+      if (!selectedConversation && response.data.conversations.length > 0) {
+        setSelectedConversation(response.data.conversations[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load conversations",
+        variant: "destructive"
+      });
+      // Set fallback data for demo purposes
+      setConversations(messagesData.map(msg => ({
+        user: {
+          id: `fallback-${msg.id}`,
+          firstName: msg.sender.name.split(' ')[0],
+          lastName: msg.sender.name.split(' ')[1] || '',
+          email: `${msg.sender.name.toLowerCase().replace(' ', '.')}@example.com`,
+          role: msg.sender.role,
+          profileImage: msg.sender.avatar
+        },
+        latestMessage: {
+          id: `msg-${msg.id}`,
+          senderId: `fallback-${msg.id}`,
+          receiverId: user?.id || 'admin',
+          message: msg.message,
+          status: 'SENT',
+          isRead: msg.read,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        unreadCount: msg.read ? 0 : 1
+      })));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const sendMessage = () => {
-    if (!messageText.trim()) return;
+  const fetchMessages = async (userId: string) => {
+    setLoadingMessages(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/messages/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessages(response.data.messages);
+      
+      // Mark all unread messages as read
+      const unreadMessages = response.data.messages.filter(
+        (msg: Message) => !msg.isRead && msg.senderId === userId
+      );
+      unreadMessages.forEach((msg: Message) => {
+        markMessageAsRead(msg.id);
+      });
+      
+      // Update conversations to reflect read messages
+      if (unreadMessages.length > 0) {
+        fetchConversations();
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive"
+      });
+      // Set fallback data
+      setMessages([
+        {
+          id: 'fallback-msg-1',
+          senderId: selectedConversation?.user.id || 'fallback-user',
+          receiverId: user?.id || 'admin',
+          message: 'This is a fallback message since we could not connect to the server.',
+          status: 'SENT',
+          isRead: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'fallback-msg-2',
+          senderId: user?.id || 'admin',
+          receiverId: selectedConversation?.user.id || 'fallback-user',
+          message: 'This is a fallback reply.',
+          status: 'DELIVERED',
+          isRead: true,
+          createdAt: new Date(Date.now() + 60000).toISOString(),
+          updatedAt: new Date(Date.now() + 60000).toISOString()
+        }
+      ]);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !selectedConversation) return;
     
-    // Just to simulate sending a message
-    toast({
-      title: "Message Sent",
-      description: "Your message has been sent successfully.",
+    try {
+      // Send the message through socket
+      sendMessage(selectedConversation.user.id, messageText);
+      
+      // Optimistically add message to UI
+      const newMessage: Message = {
+        id: `temp-${Date.now()}`,
+        senderId: user?.id || 'admin',
+        receiverId: selectedConversation.user.id,
+        message: messageText,
+        status: 'SENT',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      setMessageText("");
+      
+      // Clear typing indicator
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        setTypingTimeout(null);
+      }
+      sendTypingStatus(selectedConversation.user.id, false);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleStar = async (userId: string) => {
+    setStarredContacts(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
+    );
+    
+    try {
+      await axios.post(`${API_BASE_URL}/admin/contacts/star/${userId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (error) {
+      console.error("Error starring contact:", error);
+      // Revert on error
+      setStarredContacts(prev => 
+        prev.includes(userId) 
+          ? prev.filter(id => id !== userId) 
+          : [...prev, userId]
+      );
+    }
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessageText(e.target.value);
+    
+    if (!selectedConversation) return;
+    
+    // Send typing indicator
+    if (!isTyping) {
+      setIsTyping(true);
+      sendTypingStatus(selectedConversation.user.id, true);
+    }
+    
+    // Clear previous timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+    
+    // Set timeout to stop typing indicator after 2 seconds of inactivity
+    const timeout = setTimeout(() => {
+      setIsTyping(false);
+      sendTypingStatus(selectedConversation.user.id, false);
+    }, 2000);
+    
+    setTypingTimeout(timeout);
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatMessageDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    } else {
+      return date.toLocaleDateString(undefined, { 
+        weekday: 'long', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+  };
+
+  const getGroupedMessages = () => {
+    const groups: Record<string, Message[]> = {};
+    
+    messages.forEach(message => {
+      const date = formatMessageDate(message.createdAt);
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
     });
     
-    setMessageText("");
+    return Object.entries(groups).map(([date, messages]) => ({
+      date,
+      messages
+    }));
   };
 
-  const filteredMessages = messagesData.filter(
-    message => 
-      message.sender.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      message.message.toLowerCase().includes(searchQuery.toLowerCase())
+  const getUserName = (user: User) => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    } else if (user.firstName) {
+      return user.firstName;
+    } else {
+      return user.email.split('@')[0];
+    }
+  };
+
+  const getUserInitials = (user: User) => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+    } else if (user.firstName) {
+      return user.firstName.substring(0, 2).toUpperCase();
+    } else {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+  };
+
+  const filteredConversations = conversations.filter(
+    conversation => {
+      const userName = getUserName(conversation.user).toLowerCase();
+      const userEmail = conversation.user.email.toLowerCase();
+      const searchLower = searchQuery.toLowerCase();
+      
+      return userName.includes(searchLower) || 
+             userEmail.includes(searchLower) ||
+             conversation.latestMessage.message.toLowerCase().includes(searchLower);
+    }
   );
 
   // Animation variants
@@ -127,59 +455,73 @@ const Messages: React.FC = () => {
                 </TabsList>
               </Tabs>
               <CardContent className="flex-1 overflow-hidden px-2 py-2">
-                <ScrollArea className="h-full px-2">
-                  <div className="space-y-1">
-                    {filteredMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
-                          selectedMessage.id === message.id
-                            ? "bg-muted"
-                            : ""
-                        }`}
-                        onClick={() => setSelectedMessage(message)}
-                      >
-                        <Avatar className="w-10 h-10 flex-shrink-0">
-                          <AvatarImage src={message.sender.avatar} />
-                          <AvatarFallback>
-                            {message.sender.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-center">
-                            <p className="font-medium truncate">
-                              {message.sender.name}
-                            </p>
-                            <div className="flex items-center">
-                              {!message.read && (
-                                <Badge variant="default" className="h-2 w-2 rounded-full p-0" />
-                              )}
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleStar(message.id);
-                                }} 
-                                className="ml-2 text-muted-foreground hover:text-amber-400"
-                              >
-                                {starredContacts.includes(message.id) ? (
-                                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                                ) : (
-                                  <StarOff className="h-4 w-4" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {message.message}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {message.time}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                {isLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                </ScrollArea>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-center p-4">
+                    <p className="text-muted-foreground">
+                      {searchQuery ? "No contacts match your search" : "No conversations yet"}
+                    </p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-full px-2">
+                    <div className="space-y-1">
+                      {filteredConversations.map((conversation) => (
+                        <div
+                          key={conversation.user.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
+                            selectedConversation?.user.id === conversation.user.id
+                              ? "bg-muted"
+                              : ""
+                          }`}
+                          onClick={() => setSelectedConversation(conversation)}
+                        >
+                          <Avatar className="w-10 h-10 flex-shrink-0">
+                            <AvatarImage src={conversation.user.profileImage || undefined} />
+                            <AvatarFallback>
+                              {getUserInitials(conversation.user)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center">
+                              <p className="font-medium truncate">
+                                {getUserName(conversation.user)}
+                              </p>
+                              <div className="flex items-center">
+                                {conversation.unreadCount > 0 && (
+                                  <Badge variant="default" className="h-5 w-5 rounded-full flex items-center justify-center p-0 text-[10px]">
+                                    {conversation.unreadCount}
+                                  </Badge>
+                                )}
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleStar(conversation.user.id);
+                                  }} 
+                                  className="ml-2 text-muted-foreground hover:text-amber-400"
+                                >
+                                  {starredContacts.includes(conversation.user.id) ? (
+                                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                  ) : (
+                                    <StarOff className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {conversation.latestMessage.message}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatTime(conversation.latestMessage.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -187,90 +529,123 @@ const Messages: React.FC = () => {
           {/* Chat Area */}
           <motion.div variants={itemVariants} className="lg:col-span-2">
             <Card className="h-full flex flex-col">
-              <CardHeader className="border-b flex-none px-6 py-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={selectedMessage.sender.avatar} />
-                      <AvatarFallback>
-                        {selectedMessage.sender.name.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <CardTitle className="text-lg">{selectedMessage.sender.name}</CardTitle>
-                      <CardDescription>{selectedMessage.sender.role}</CardDescription>
+              {selectedConversation ? (
+                <>
+                  <CardHeader className="border-b flex-none px-6 py-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={selectedConversation.user.profileImage || undefined} />
+                          <AvatarFallback>
+                            {getUserInitials(selectedConversation.user)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-lg">{getUserName(selectedConversation.user)}</CardTitle>
+                          <CardDescription>{selectedConversation.user.role}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon">
+                          <Phone className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Video className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 overflow-hidden p-0">
+                    {loadingMessages ? (
+                      <div className="h-full flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-full p-6">
+                        {getGroupedMessages().map((group, groupIndex) => (
+                          <div key={groupIndex} className="space-y-4 mb-6">
+                            <div className="flex justify-center">
+                              <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">
+                                {group.date}
+                              </span>
+                            </div>
+                            {group.messages.map((message, messageIndex) => (
+                              <div 
+                                key={message.id} 
+                                className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div 
+                                  className={`p-3 rounded-lg max-w-[80%] ${
+                                    message.senderId === user?.id 
+                                      ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                                      : 'bg-muted rounded-tl-none'
+                                  }`}
+                                >
+                                  <p className="text-sm">{message.message}</p>
+                                  <span 
+                                    className={`text-xs ${
+                                      message.senderId === user?.id 
+                                        ? 'text-primary-foreground/80' 
+                                        : 'text-muted-foreground'
+                                    }`}
+                                  >
+                                    {formatTime(message.createdAt)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                  <CardFooter className="border-t p-4 flex-none">
+                    <div className="flex items-center gap-2 w-full">
+                      <Button variant="ghost" size="icon" className="rounded-full">
+                        <Paperclip className="h-4 w-4" />
+                      </Button>
+                      <Textarea
+                        placeholder="Type your message..."
+                        className="flex-1 min-h-10 max-h-32"
+                        value={messageText}
+                        onChange={handleTyping}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                      />
+                      <Button 
+                        size="icon" 
+                        className="rounded-full" 
+                        onClick={handleSendMessage}
+                        disabled={!messageText.trim()}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardFooter>
+                </>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+                  <div className="mb-4 p-4 rounded-full bg-muted">
+                    <Send className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon">
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <Video className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden p-0">
-                <ScrollArea className="h-full p-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-center">
-                      <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">
-                        Today
-                      </span>
-                    </div>
-                    <div className="flex justify-start">
-                      <div className="bg-muted p-3 rounded-lg rounded-tl-none max-w-[80%]">
-                        <p className="text-sm">{selectedMessage.message}</p>
-                        <span className="text-xs text-muted-foreground">9:30 AM</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <div className="bg-primary text-primary-foreground p-3 rounded-lg rounded-tr-none max-w-[80%]">
-                        <p className="text-sm">Thanks for reaching out. How can I help?</p>
-                        <span className="text-xs text-primary-foreground/80">9:32 AM</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-start">
-                      <div className="bg-muted p-3 rounded-lg rounded-tl-none max-w-[80%]">
-                        <p className="text-sm">I need some assistance with the payment processing system. It seems to be experiencing some delays.</p>
-                        <span className="text-xs text-muted-foreground">9:35 AM</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <div className="bg-primary text-primary-foreground p-3 rounded-lg rounded-tr-none max-w-[80%]">
-                        <p className="text-sm">I understand. Let me check the system status and get back to you shortly. Have you tried restarting the application?</p>
-                        <span className="text-xs text-primary-foreground/80">9:37 AM</span>
-                      </div>
-                    </div>
-                  </div>
-                </ScrollArea>
-              </CardContent>
-              <CardFooter className="border-t p-4 flex-none">
-                <div className="flex items-center gap-2 w-full">
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Paperclip className="h-4 w-4" />
+                  <h3 className="text-xl font-medium mb-2">Your Messages</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Select a conversation or start a new one
+                  </p>
+                  <Button>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    New Message
                   </Button>
-                  <Textarea
-                    placeholder="Type your message..."
-                    className="flex-1 min-h-10 max-h-32"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                  />
-                  <Button size="icon" className="rounded-full" onClick={sendMessage}>
-                    <Send className="h-4 w-4" />
-                  </Button>
                 </div>
-              </CardFooter>
+              )}
             </Card>
           </motion.div>
         </motion.div>

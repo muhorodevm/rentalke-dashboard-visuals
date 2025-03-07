@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -22,11 +23,24 @@ const Login: React.FC = () => {
     setIsLoading(true);
   
     try {
-      await login(email, password);
-      // No need for toast or navigate here as the context handles it
+      // Call the login function from the AuthContext
+      const success = await login(email, password);
+      
+      if (success) {
+        toast({
+          title: "Login successful",
+          description: "Welcome to RentalKE Admin Dashboard",
+        });
+        // Initialize socket connection after login
+        navigate("/");
+      }
     } catch (error) {
-      // Error is handled in the context
       console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: "Invalid email or password. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
