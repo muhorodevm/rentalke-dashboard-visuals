@@ -39,7 +39,7 @@ const ForgotPassword: React.FC = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-2">
-              <img src="/placeholder.svg" alt="RentalKE Logo" className="h-12 w-auto" />
+              <img src="https://res.cloudinary.com/dyzssa40e/image/upload/v1739030444/5852517438091020422_ei4dkm.jpg" alt="RentalKE Logo" className="h-12 w-auto" />
             </div>
             <CardTitle className="text-2xl font-bold">
               {step === "email" && "Forgot Password"}
