@@ -102,7 +102,7 @@ const Messages = () => {
       const newMsg = {
         id: `m${messages.length + 1}`,
         sender: '1',
-        text: 'Thanks for the information! I'll make the payment today.',
+        text: "Thanks for the information! I'll make the payment today.",
         time: '10:40 AM',
         status: 'received'
       };
