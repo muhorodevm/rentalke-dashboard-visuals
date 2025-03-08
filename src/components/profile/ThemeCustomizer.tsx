@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, Moon, Sun, Laptop } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -18,20 +18,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 
 const colorThemes = [
-  { name: 'Default', value: 'default' },
-  { name: 'Purple', value: 'purple' },
-  { name: 'Green', value: 'green' },
-  { name: 'Blue', value: 'blue' },
-  { name: 'Orange', value: 'orange' },
-  { name: 'Red', value: 'red' },
+  { name: 'Default', value: 'default', color: 'bg-blue-600' },
+  { name: 'Purple', value: 'purple', color: 'bg-purple-600' },
+  { name: 'Green', value: 'green', color: 'bg-green-600' },
+  { name: 'Blue', value: 'blue', color: 'bg-sky-600' },
+  { name: 'Orange', value: 'orange', color: 'bg-orange-600' },
+  { name: 'Red', value: 'red', color: 'bg-red-600' },
 ];
 
 const ThemeCustomizer: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const [accentColor, setAccentColor] = useState('default');
+  const { toast } = useToast();
   
   const ThemeIcon = () => {
     switch (theme) {
@@ -42,6 +44,61 @@ const ThemeCustomizer: React.FC = () => {
       default:
         return <Laptop className="h-5 w-5" />;
     }
+  };
+
+  // Apply the selected accent color
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    // Reset to default colors first
+    root.style.removeProperty('--primary');
+    root.style.removeProperty('--primary-foreground');
+    root.style.removeProperty('--accent');
+    root.style.removeProperty('--accent-foreground');
+    root.style.removeProperty('--secondary');
+    root.style.removeProperty('--secondary-foreground');
+
+    // Apply new color theme
+    switch (accentColor) {
+      case 'purple':
+        root.style.setProperty('--primary', '270 70% 46%');
+        root.style.setProperty('--primary-foreground', '0 0% 100%');
+        root.style.setProperty('--accent', '273 68% 59%');
+        root.style.setProperty('--secondary', '280 84% 39%');
+        break;
+      case 'green':
+        root.style.setProperty('--primary', '142 71% 45%');
+        root.style.setProperty('--primary-foreground', '0 0% 100%');
+        root.style.setProperty('--accent', '142 71% 45%');
+        root.style.setProperty('--secondary', '143 64% 24%');
+        break;
+      case 'blue':
+        root.style.setProperty('--primary', '217 91% 60%');
+        root.style.setProperty('--primary-foreground', '0 0% 100%');
+        root.style.setProperty('--accent', '214 100% 60%');
+        root.style.setProperty('--secondary', '221 83% 53%');
+        break;
+      case 'orange':
+        root.style.setProperty('--primary', '24 94% 50%');
+        root.style.setProperty('--primary-foreground', '0 0% 100%');
+        root.style.setProperty('--accent', '20 90% 50%');
+        root.style.setProperty('--secondary', '24 94% 35%');
+        break;
+      case 'red':
+        root.style.setProperty('--primary', '0 84% 60%');
+        root.style.setProperty('--primary-foreground', '0 0% 100%');
+        root.style.setProperty('--accent', '0 72% 51%');
+        root.style.setProperty('--secondary', '0 74% 42%');
+        break;
+      // Default blue theme already set in CSS
+    }
+  }, [accentColor]);
+
+  const handleApplyPreferences = () => {
+    toast({
+      title: "Preferences Applied",
+      description: `Theme: ${theme}, Accent Color: ${accentColor}`,
+    });
   };
 
   return (
@@ -127,7 +184,7 @@ const ThemeCustomizer: React.FC = () => {
                     htmlFor={`color-${color.value}`}
                     className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                   >
-                    <div className={`w-6 h-6 rounded-full bg-${color.value} border flex items-center justify-center`}>
+                    <div className={`w-6 h-6 rounded-full ${color.color} border flex items-center justify-center`}>
                       {accentColor === color.value && (
                         <Check className="h-3 w-3 text-white" />
                       )}
@@ -168,7 +225,7 @@ const ThemeCustomizer: React.FC = () => {
           </div>
           
           <div className="pt-4">
-            <Button className="w-full">
+            <Button className="w-full" onClick={handleApplyPreferences}>
               <ThemeIcon />
               <span className="ml-2">Apply Preferences</span>
             </Button>

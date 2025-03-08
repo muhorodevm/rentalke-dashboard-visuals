@@ -21,6 +21,7 @@ import UserDetail from "./pages/UserDetail";
 import Profile from "./pages/Profile";
 import Payments from "./pages/Payments";
 import Properties from "./pages/Properties";
+import PropertyDetail from "./pages/PropertyDetail";
 import PrivateRoute from "@/components/layout/PrivateRoute";
 
 const queryClient = new QueryClient({
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/profile" element={<Layout><Profile /></Layout>} />
                 <Route path="/payments" element={<Layout><Payments /></Layout>} />
                 <Route path="/properties" element={<Layout><Properties /></Layout>} />
+                <Route path="/properties/:id" element={<Layout><PropertyDetail /></Layout>} />
               </Route>
 
               {/* Fallback route */}

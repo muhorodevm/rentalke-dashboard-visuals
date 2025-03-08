@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { propertiesData, Property, PropertyType } from '@/data/dummyData';
 import { 
   Building, Search, Filter, ChevronRight, MapPin, 
@@ -17,42 +18,40 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
-import { 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 const Properties = () => {
-  const { toast } = useToast();
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  
-  const filteredProperties = propertiesData.filter(property => {
-    const matchesSearch = 
-      property.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.manager.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = selectedType === 'all' || property.type === selectedType;
-    const matchesStatus = selectedStatus === 'all' || property.status === selectedStatus;
-    
-    return matchesSearch && matchesType && matchesStatus;
-  });
-  
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  useEffect(() => {
+    // Simulate API call
+    setLoading(true);
+    setTimeout(() => {
+      setProperties(propertiesData);
+      setLoading(false);
+    }, 500);
+  }, []);
+
   const getPropertyTypeIcon = (type: PropertyType) => {
     switch (type) {
       case 'estate':
@@ -64,52 +63,92 @@ const Properties = () => {
       case 'house':
         return <House className="h-4 w-4 mr-1" />;
       default:
-        return <Building className="h-4 w-4 mr-1" />;
+        return <Home className="h-4 w-4 mr-1" />;
     }
   };
-  
-  const getStatusColor = (status: string) => {
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'available':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Available</Badge>;
       case 'occupied':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Occupied</Badge>;
       case 'under-maintenance':
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Under Maintenance</Badge>;
       case 'under-construction':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Under Construction</Badge>;
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
-  
+
+  const filteredProperties = properties.filter(property => {
+    const matchesSearch = 
+      property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.manager.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = filterType === 'all' || property.type === filterType;
+    const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
+    
+    return matchesSearch && matchesType && matchesStatus;
+  });
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage all your rental properties and real estate assets.
-        </p>
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
+          <p className="text-muted-foreground">
+            Manage and view all properties in your portfolio
+          </p>
+        </div>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Property
+        </Button>
       </div>
-      
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <div className="relative flex-grow">
+
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="md:col-span-4 relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search properties..."
-            className="pl-8"
+            type="search"
+            placeholder="Search properties by name, address or manager..."
+            className="pl-8 w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
-        <div className="flex gap-2">
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-[130px]">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                <span>Type</span>
-              </div>
+        <div className="md:col-span-1">
+          <Select
+            value={filterType}
+            onValueChange={setFilterType}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Property Type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
@@ -119,134 +158,148 @@ const Properties = () => {
               <SelectItem value="house">House</SelectItem>
             </SelectContent>
           </Select>
-          
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-[130px]">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                <span>Status</span>
-              </div>
+        </div>
+        <div className="md:col-span-1">
+          <Select
+            value={filterStatus}
+            onValueChange={setFilterStatus}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="available">Available</SelectItem>
               <SelectItem value="occupied">Occupied</SelectItem>
-              <SelectItem value="under-maintenance">Maintenance</SelectItem>
-              <SelectItem value="under-construction">Construction</SelectItem>
+              <SelectItem value="under-maintenance">Under Maintenance</SelectItem>
+              <SelectItem value="under-construction">Under Construction</SelectItem>
             </SelectContent>
           </Select>
-          
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Property
-          </Button>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProperties.length === 0 ? (
-          <div className="col-span-full flex justify-center items-center py-20">
-            <div className="text-center">
-              <Building className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-medium mb-2">No properties found</h3>
-              <p className="text-muted-foreground mb-4">
-                Try adjusting your search or filters to find what you're looking for.
-              </p>
-              <Button onClick={() => {
-                setSearchTerm('');
-                setSelectedType('all');
-                setSelectedStatus('all');
-              }}>
-                Clear Filters
-              </Button>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-lg border p-4 space-y-4 animate-pulse">
+              <div className="w-full h-48 bg-muted rounded-md"></div>
+              <div className="space-y-2">
+                <div className="h-5 bg-muted rounded w-2/3"></div>
+                <div className="h-4 bg-muted rounded w-full"></div>
+              </div>
             </div>
-          </div>
-        ) : (
-          filteredProperties.map((property) => (
-            <motion.div
-              key={property.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
-                <div className="h-48 overflow-hidden relative">
-                  {property.image ? (
-                    <img 
-                      src={property.image} 
-                      alt={property.name}
-                      className="w-full h-full object-cover transition-transform hover:scale-105 duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <Building className="h-12 w-12 text-muted-foreground" />
+          ))}
+        </div>
+      ) : filteredProperties.length > 0 ? (
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {filteredProperties.map((property) => (
+            <motion.div key={property.id} variants={itemVariants}>
+              <Link to={`/properties/${property.id}`} className="block">
+                <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="relative">
+                    <AspectRatio ratio={16 / 9}>
+                      <img
+                        src={property.image || 'https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'}
+                        alt={property.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </AspectRatio>
+                    <div className="absolute top-2 right-2">
+                      {getStatusBadge(property.status)}
                     </div>
-                  )}
-                  <Badge 
-                    className={cn(
-                      "absolute top-3 right-3 capitalize", 
-                      getStatusColor(property.status)
+                  </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center">
+                          {getPropertyTypeIcon(property.type)}
+                          <CardDescription className="capitalize">
+                            {property.type}
+                          </CardDescription>
+                        </div>
+                        <CardTitle className="text-lg mt-1">{property.name}</CardTitle>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <span className="sr-only">Open menu</span>
+                            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
+                              <path d="M3.625 7.5C3.625 8.12132 3.12132 8.625 2.5 8.625C1.87868 8.625 1.375 8.12132 1.375 7.5C1.375 6.87868 1.87868 6.375 2.5 6.375C3.12132 6.375 3.625 6.87868 3.625 7.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM13.625 7.5C13.625 8.12132 13.1213 8.625 12.5 8.625C11.8787 8.625 11.375 8.12132 11.375 7.5C11.375 6.87868 11.8787 6.375 12.5 6.375C13.1213 6.375 13.625 6.87868 13.625 7.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+                            </svg>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.preventDefault();
+                            window.location.href = `/properties/${property.id}`;
+                          }}>
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>Edit Property</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">
+                            Delete Property
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="flex items-start space-x-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <span className="text-sm text-muted-foreground">
+                        {property.address}
+                      </span>
+                    </div>
+                    {property.units && (
+                      <div className="mt-2 text-sm">
+                        <span className="font-medium">{property.units}</span> units
+                      </div>
                     )}
-                  >
-                    {property.status.replace('-', ' ')}
-                  </Badge>
-                </div>
-                
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl truncate">{property.name}</CardTitle>
-                    <Badge variant="outline" className="flex items-center">
-                      {getPropertyTypeIcon(property.type)}
-                      <span className="capitalize">{property.type}</span>
-                    </Badge>
-                  </div>
-                  <CardDescription className="flex items-center mt-1 text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
-                    <span className="truncate">{property.address}</span>
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent className="py-2 flex-grow">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Manager:</span>
-                    <span className="font-medium">{property.manager}</span>
-                  </div>
-                  
-                  {property.units && (
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-muted-foreground">Units:</span>
-                      <span className="font-medium">{property.units}</span>
+                  </CardContent>
+                  <CardFooter className="pt-2">
+                    <div className="flex items-center w-full justify-between">
+                      <div className="flex items-center">
+                        <Avatar className="h-8 w-8 mr-2">
+                          <AvatarImage src={`https://ui-avatars.com/api/?name=${property.manager}&background=0D8ABC&color=fff`} />
+                          <AvatarFallback>{property.manager.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{property.manager}</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
-                  )}
-                  
-                  {property.area && (
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-muted-foreground">Area:</span>
-                      <span className="font-medium">{property.area}</span>
-                    </div>
-                  )}
-                  
-                  {property.rent && (
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-muted-foreground">Rent:</span>
-                      <span className="font-medium">{property.rent}</span>
-                    </div>
-                  )}
-                </CardContent>
-                
-                <CardFooter className="pt-2 pb-4">
-                  <Button className="w-full" variant="outline" asChild>
-                    <Link to={`/properties/${property.id}`} className="flex justify-between items-center">
-                      <span>View Details</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
+                  </CardFooter>
+                </Card>
+              </Link>
             </motion.div>
-          ))
-        )}
-      </div>
+          ))}
+        </motion.div>
+      ) : (
+        <div className="text-center py-12">
+          <Building className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h2 className="mt-4 text-lg font-semibold">No properties found</h2>
+          <p className="text-muted-foreground mt-2">
+            No properties match your current search criteria.
+          </p>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => {
+              setSearchTerm('');
+              setFilterType('all');
+              setFilterStatus('all');
+            }}
+          >
+            Clear Filters
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

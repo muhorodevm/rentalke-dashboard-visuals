@@ -41,6 +41,9 @@ import {
   RefreshCw,
   Search,
   Settings,
+  Phone,
+  Check,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Select,
@@ -501,7 +504,87 @@ const Payments: React.FC = () => {
                         Configure
                       </Button>
                     </div>
+                    
+                    {/* New M-Pesa Payment Method */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="font-medium">M-Pesa</p>
+                          <p className="text-sm text-muted-foreground">Accept mobile payments via M-Pesa</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-100 text-green-800">Active</Badge>
+                        <Button variant="ghost" size="sm">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Configure
+                        </Button>
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                {/* M-Pesa Settings Section */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium">M-Pesa Configuration</h3>
+                  <Separator />
+                  <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+                    <CardContent className="p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5 text-green-600" />
+                        <p className="text-sm font-medium">M-Pesa integration is active and secure</p>
+                      </div>
+                      
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="mpesa-shortcode">Business Shortcode</Label>
+                          <Input id="mpesa-shortcode" defaultValue="123456" />
+                          <p className="text-xs text-muted-foreground">Your M-Pesa till or paybill number</p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="mpesa-key">API Key</Label>
+                          <Input id="mpesa-key" type="password" defaultValue="*************" />
+                          <p className="text-xs text-muted-foreground">Available from your Safaricom Developer account</p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="mpesa-secret">API Secret</Label>
+                          <Input id="mpesa-secret" type="password" defaultValue="*************" />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="mpesa-env">Environment</Label>
+                          <Select defaultValue="sandbox">
+                            <SelectTrigger id="mpesa-env">
+                              <SelectValue placeholder="Select environment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                              <SelectItem value="production">Production</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="pt-2">
+                        <Label className="mb-2 block">Callback URLs</Label>
+                        <div className="space-y-2">
+                          <Input defaultValue="https://yourwebsite.com/api/mpesa/callback" />
+                          <p className="text-xs text-muted-foreground">Where M-Pesa will send transaction results</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline">Test Connection</Button>
+                        <Button className="bg-green-600 hover:bg-green-700">
+                          <Check className="mr-2 h-4 w-4" />
+                          Save M-Pesa Settings
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 <div className="space-y-3">

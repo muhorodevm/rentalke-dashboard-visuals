@@ -83,6 +83,52 @@
     --sidebar-border: 222 47% 16%;
     --sidebar-ring: 210 100% 60%;
   }
+
+  /* Theme color classes */
+  .theme-purple {
+    --primary: 270 70% 46%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 273 68% 59%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 280 84% 39%;
+    --secondary-foreground: 0 0% 100%;
+  }
+
+  .theme-green {
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 143 64% 24%;
+    --secondary-foreground: 0 0% 100%;
+  }
+
+  .theme-blue {
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 214 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 221 83% 53%;
+    --secondary-foreground: 0 0% 100%;
+  }
+
+  .theme-orange {
+    --primary: 24 94% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 20 90% 50%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 24 94% 35%;
+    --secondary-foreground: 0 0% 100%;
+  }
+
+  .theme-red {
+    --primary: 0 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 0 72% 51%;
+    --accent-foreground: 0 0% 100%;
+    --secondary: 0 74% 42%;
+    --secondary-foreground: 0 0% 100%;
+  }
 }
 
 @layer base {
@@ -146,5 +192,30 @@
   
   .animate-on-scroll.animated {
     @apply opacity-100 translate-y-0;
+  }
+
+  /* Color Theme Utility Classes */
+  .bg-purple-600 {
+    @apply bg-[#9333ea];
+  }
+  
+  .bg-green-600 {
+    @apply bg-[#16a34a];
+  }
+  
+  .bg-sky-600 {
+    @apply bg-[#0284c7];
+  }
+  
+  .bg-orange-600 {
+    @apply bg-[#ea580c];
+  }
+  
+  .bg-red-600 {
+    @apply bg-[#dc2626];
+  }
+  
+  .bg-blue-600 {
+    @apply bg-[#2563eb];
   }
 }
