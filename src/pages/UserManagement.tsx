@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -158,6 +159,7 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 const UserManagement = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserData[]>(mockUsers);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>(mockUsers);
   const [searchTerm, setSearchTerm] = useState('');
@@ -180,7 +182,7 @@ const UserManagement = () => {
     }
   });
   
-  useEffect(() => {
+  React.useEffect(() => {
     let result = users;
     
     // Search filter
@@ -267,6 +269,10 @@ const UserManagement = () => {
     
     setIsAddUserDialogOpen(false);
     form.reset();
+  };
+
+  const handleViewUser = (userId: string) => {
+    navigate(`/user-management/${userId}`);
   };
   
   const getRoleBadgeColor = (role: string) => {
@@ -408,8 +414,12 @@ const UserManagement = () => {
                   </TableRow>
                 ) : (
                   filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
+                    <TableRow 
+                      key={user.id} 
+                      className="cursor-pointer hover:bg-muted/70"
+                      onClick={() => handleViewUser(user.id)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox 
                           checked={selectedUsers.includes(user.id)}
                           onCheckedChange={() => toggleUserSelection(user.id)}
@@ -442,7 +452,7 @@ const UserManagement = () => {
                       <TableCell className="hidden lg:table-cell">
                         <span className="text-sm text-muted-foreground">{user.lastActive}</span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -450,12 +460,22 @@ const UserManagement = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {}}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewUser(user.id);
+                            }}>
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              // Edit user functionality would go here
+                            }}>
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setUserToDelete(user.id);
                                 setIsDeleteDialogOpen(true);
                               }}

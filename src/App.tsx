@@ -17,8 +17,10 @@ import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import UserManagement from "./pages/UserManagement";
+import UserDetail from "./pages/UserDetail";
 import Profile from "./pages/Profile";
 import Payments from "./pages/Payments";
+import Properties from "./pages/Properties";
 import PrivateRoute from "@/components/layout/PrivateRoute";
 
 const queryClient = new QueryClient({
@@ -50,8 +52,10 @@ const App = () => (
                 <Route path="/settings" element={<Layout><Settings /></Layout>} />
                 <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
                 <Route path="/user-management" element={<Layout><UserManagement /></Layout>} />
+                <Route path="/user-management/:id" element={<Layout><UserDetail /></Layout>} />
                 <Route path="/profile" element={<Layout><Profile /></Layout>} />
                 <Route path="/payments" element={<Layout><Payments /></Layout>} />
+                <Route path="/properties" element={<Layout><Properties /></Layout>} />
               </Route>
 
               {/* Fallback route */}

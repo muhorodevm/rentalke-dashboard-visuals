@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Bell, Moon, Sun, MessageSquare } from 'lucide-react';
 import { userProfile, notificationsData } from '@/data/dummyData';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,13 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 
-
 interface TopbarProps {
   isSidebarCollapsed: boolean;
 }
 
 const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
   
   const { logout } = useAuth();
   const { user } = useAuth();
@@ -36,6 +36,45 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
   
   const markAllAsRead = () => {
     setUnreadNotifications(0);
+  };
+  
+  // Get page title based on route
+  const getPageTitle = () => {
+    const path = location.pathname;
+    
+    // Check if it's a user detail page
+    if (path.startsWith('/user-management/')) {
+      return 'User Details';
+    }
+    
+    // Check if it's a property detail page
+    if (path.startsWith('/properties/') && path !== '/properties') {
+      return 'Property Details';
+    }
+    
+    // Handle other routes
+    switch (path) {
+      case '/':
+        return 'Dashboard';
+      case '/analytics':
+        return 'Analytics';
+      case '/messages':
+        return 'Messages';
+      case '/properties':
+        return 'Properties';
+      case '/user-management':
+        return 'User Management';
+      case '/payments':
+        return 'Payments';
+      case '/profile':
+        return 'Profile';
+      case '/settings':
+        return 'Settings';
+      case '/notifications':
+        return 'Notifications';
+      default:
+        return 'Dashboard';
+    }
   };
   
   return (
@@ -49,7 +88,7 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
       <div className="h-full flex items-center justify-between">
         {/* Left section - Header title */}
         <div>
-          <h2 className="text-xl font-semibold">Dashboard</h2>
+          <h2 className="text-xl font-semibold">{getPageTitle()}</h2>
         </div>
         
         {/* Right section - actions and profile */}

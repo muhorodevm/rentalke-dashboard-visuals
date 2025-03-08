@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -22,12 +21,12 @@ const Messages = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Filter contacts based on search query and tab
   const filteredContacts = mockContacts.filter(contact => {
     const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase());
     if (activeTab === 'all') return matchesSearch;
@@ -36,16 +35,13 @@ const Messages = () => {
     return matchesSearch;
   });
 
-  // Load messages for selected contact
   useEffect(() => {
     if (selectedContact) {
       setLoading(true);
-      // Simulate API call
       setTimeout(() => {
         setMessages(mockConversations[selectedContact.id] || []);
         setLoading(false);
         
-        // Simulate typing indicator
         if (selectedContact.id === '1') {
           setTimeout(() => {
             setIsTyping(true);
@@ -59,7 +55,6 @@ const Messages = () => {
     }
   }, [selectedContact]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -90,7 +85,6 @@ const Messages = () => {
     
     setMessages([...messages, newMsg]);
     
-    // Simulate message status updates
     setTimeout(() => {
       setMessages(prev => 
         prev.map(msg => 
@@ -129,7 +123,6 @@ const Messages = () => {
 
       <Card className="border shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 h-[calc(80vh-13rem)]">
-          {/* Contacts Side */}
           <div className="border-r md:col-span-1">
             <CardHeader className="p-4">
               <div className="relative">
@@ -166,7 +159,6 @@ const Messages = () => {
             </Tabs>
           </div>
           
-          {/* Chat Area */}
           <div className="md:col-span-2 flex flex-col">
             {selectedContact ? (
               <>

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, LogOut, 
   HelpCircle, Home, BarChart3, MessageSquare,
-  Settings, Bell, Users, User, CreditCard
+  Settings, Bell, Users, User, CreditCard, Building
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
     { name: 'Analytics', path: '/analytics', icon: BarChart3 },
     { name: 'Messages', path: '/messages', icon: MessageSquare },
     { name: 'Notifications', path: '/notifications', icon: Bell },
+    { name: 'Properties', path: '/properties', icon: Building },
     { name: 'User Management', path: '/user-management', icon: Users },
     { name: 'Payments', path: '/payments', icon: CreditCard },
     { name: 'Profile', path: '/profile', icon: User },
