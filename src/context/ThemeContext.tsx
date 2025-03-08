@@ -1,83 +1,31 @@
-import { createContext, useEffect, useState } from "react";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
 
-export const ThemeContext = createContext({
-  theme: "system",
-  setTheme: (theme: string) => {},
-  accentColor: "default",
-  setAccentColor: (color: string) => {},
-  fontSize: "medium",
-  setFontSize: (size: string) => {},
-});
+import React, { createContext, useContext, useState } from 'react';
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Initialize with saved preferences or defaults
-  const [accentColor, setAccentColor] = useState("default");
-  const [fontSize, setFontSize] = useState("medium");
+type Theme = 'light' | 'dark' | 'system';
 
-  // Load saved preferences on mount
-  useEffect(() => {
-    const savedAccentColor = localStorage.getItem("accentColor") || "default";
-    const savedFontSize = localStorage.getItem("fontSize") || "medium";
-    
-    setAccentColor(savedAccentColor);
-    setFontSize(savedFontSize);
-    
-    // Apply font size
-    applyFontSize(savedFontSize);
+type ThemeContextType = {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+};
 
-    // Apply data attribute for accent color
-    document.documentElement.setAttribute("data-accent", savedAccentColor);
-  }, []);
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-  // Function to apply font size
-  const applyFontSize = (size: string) => {
-    switch (size) {
-      case "small":
-        document.documentElement.style.fontSize = "14px";
-        break;
-      case "medium":
-        document.documentElement.style.fontSize = "16px";
-        break;
-      case "large":
-        document.documentElement.style.fontSize = "18px";
-        break;
-      default:
-        document.documentElement.style.fontSize = "16px";
-    }
-  };
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
 
-  // Update preferences when they change
-  const handleAccentColorChange = (color: string) => {
-    setAccentColor(color);
-    localStorage.setItem("accentColor", color);
-    document.documentElement.setAttribute("data-accent", color);
-  };
-
-  const handleFontSizeChange = (size: string) => {
-    setFontSize(size);
-    localStorage.setItem("fontSize", size);
-    applyFontSize(size);
-  };
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setTheme] = useState<Theme>('system');
 
   return (
-    <ThemeContext.Provider
-      value={{
-        theme: "system", // This will be overridden by NextThemesProvider
-        setTheme: () => {}, // This will be overridden by NextThemesProvider
-        accentColor,
-        setAccentColor: handleAccentColorChange,
-        fontSize,
-        setFontSize: handleFontSizeChange,
-      }}
-    >
-      <NextThemesProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-      >
-        {children}
-      </NextThemesProvider>
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
     </ThemeContext.Provider>
   );
-}
+};
+
+export default ThemeContext;
