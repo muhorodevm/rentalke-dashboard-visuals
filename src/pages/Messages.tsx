@@ -267,7 +267,7 @@ const Messages = () => {
                       </PopoverTrigger>
                       <PopoverContent className="w-64" align="start">
                         <div className="grid grid-cols-6 gap-2">
-                          {['😊', '😂', '👍', '❤️', '🎉', '🔥', '👏', '🙏', '💯', '⭐', '❓', '⚡'].map(emoji => (
+                          {["😊", "😂", "👍", "❤️", "🎉", "🔥", "👏", "🙏", "💯", "⭐", "❓", "⚡"].map(emoji => (
                             <button
                               key={emoji}
                               className="text-2xl p-2 hover:bg-muted rounded-md"
