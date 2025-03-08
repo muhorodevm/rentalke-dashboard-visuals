@@ -5,6 +5,7 @@ import { CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Contact } from '@/data/mockMessagesData';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -14,14 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface ConversationHeaderProps {
-  contact: {
-    id: string;
-    name: string;
-    role: string;
-    avatar: string;
-    status: string;
-    lastSeen?: string;
-  };
+  contact: Contact;
 }
 
 const ConversationHeader: React.FC<ConversationHeaderProps> = ({ contact }) => {

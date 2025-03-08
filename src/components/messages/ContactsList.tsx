@@ -4,16 +4,7 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-
-interface Contact {
-  id: string;
-  name: string;
-  role: string;
-  avatar: string;
-  status: string;
-  unread?: number;
-  lastSeen?: string;
-}
+import { Contact } from '@/data/mockMessagesData';
 
 interface ContactsListProps {
   contacts: Contact[];

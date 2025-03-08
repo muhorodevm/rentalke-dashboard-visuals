@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { propertiesData, Property, PropertyType } from '@/data/dummyData';
 import { 
   Building, Search, Filter, ChevronRight, MapPin, 
-  Home, Apartment, House, Plus 
+  Home, Hotel, House, Plus 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +58,7 @@ const Properties = () => {
       case 'estate':
         return <Building className="h-4 w-4 mr-1" />;
       case 'building':
-        return <Apartment className="h-4 w-4 mr-1" />;
+        return <Hotel className="h-4 w-4 mr-1" />;
       case 'apartment':
         return <Home className="h-4 w-4 mr-1" />;
       case 'house':
