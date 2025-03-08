@@ -28,7 +28,7 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
   const { theme, toggleTheme } = useTheme();
   
   const { logout } = useAuth();
-  const {user}= useAuth();
+  const { user } = useAuth();
 
   const [unreadNotifications, setUnreadNotifications] = useState(
     notificationsData.filter(n => !n.read).length
@@ -119,7 +119,7 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
                       <div className="flex justify-between w-full">
                         <p className="font-medium">{notification.title}</p>
                         {!notification.read && (
-                          <span className="w-2 h-2 rounded-full bg-rentalke-blue" />
+                          <span className="w-2 h-2 rounded-full bg-primary" />
                         )}
                       </div>
                       <p className="text-muted-foreground text-sm line-clamp-2 mt-1">
@@ -145,42 +145,41 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
           </DropdownMenu>
           
           {/* User dropdown */}
-<DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="ghost" className="relative h-8 pl-3 pr-0 overflow-hidden" size="sm">
-      <span className="mr-2 hidden sm:inline-block">{user?.firstName}</span>
-      <Avatar className="h-8 w-8">
-        {userProfile.avatar ? (
-          <AvatarImage src={userProfile.avatar} alt={user.firstName} />
-        ) : (
-          <AvatarFallback>
-            {user?.firstName?.[0] || ""}{user?.lastName?.[0] || ""}
-          </AvatarFallback>
-        )}
-      </Avatar>
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end" className="w-56">
-    <DropdownMenuLabel className="font-normal">
-      <div className="flex flex-col space-y-1">
-        <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-        <p className="text-xs text-muted-foreground">{user?.email}</p>
-      </div> 
-    </DropdownMenuLabel>
-    <DropdownMenuSeparator />
-    <DropdownMenuItem asChild>
-      <Link to="/profile">Profile</Link>
-    </DropdownMenuItem>
-    <DropdownMenuItem asChild>
-      <Link to="/settings">Settings</Link>
-    </DropdownMenuItem>
-    <DropdownMenuSeparator />
-    <DropdownMenuItem asChild>
-      <Link to="/login" onClick={logout}>Logout</Link>
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
-
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 pl-3 pr-0 overflow-hidden" size="sm">
+                <span className="mr-2 hidden sm:inline-block">{user?.name?.split(' ')[0]}</span>
+                <Avatar className="h-8 w-8">
+                  {userProfile.avatar ? (
+                    <AvatarImage src={userProfile.avatar} alt={user?.name || ""} />
+                  ) : (
+                    <AvatarFallback>
+                      {user?.name?.substring(0, 2).toUpperCase() || ""}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">{user?.name}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                </div> 
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/profile">Profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings">Settings</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/login" onClick={logout}>Logout</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

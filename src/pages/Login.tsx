@@ -1,49 +1,51 @@
 
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion } from "framer-motion";
-import { Eye, EyeOff, LockKeyhole, Mail, Loader2 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import React, { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { Eye, EyeOff, ArrowRight, Github, Mail } from 'lucide-react';
 
-const Login: React.FC = () => {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const { toast } = useToast();
+const Login = () => {
   const { login } = useAuth();
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const navigate = useNavigate();
+  const { toast } = useToast();
   
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Missing fields",
+        description: "Please enter both email and password.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
     try {
-      // Call the login function from the AuthContext, which returns a boolean
-      const success = await login(email, password);
-      
-      if (success) {
-        toast({
-          title: "Login successful",
-          description: "Welcome to RentalKE Admin Dashboard",
-        });
-        // Navigation happens inside the login function
-      } else {
-        // This handles the case where login returns false but doesn't throw
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password. Please try again.",
-          variant: "destructive"
-        });
-      }
+      await login(email, password);
+      toast({
+        title: "Login successful",
+        description: "Welcome back to the dashboard.",
+      });
+      navigate('/');
     } catch (error) {
       console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: "Invalid email or password. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -51,94 +53,122 @@ const Login: React.FC = () => {
     }
   };
   
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-2">
-              <img src="https://res.cloudinary.com/dyzssa40e/image/upload/v1739030444/5852517438091020422_ei4dkm.jpg" alt="RentalKE Logo" className="h-12 w-auto" />
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
+        <Card className="border shadow-lg">
+          <CardHeader className="space-y-2 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Mail className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold">RentalKE Admin</CardTitle>
-            <CardDescription>Enter your credentials to access the dashboard</CardDescription>
+            <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+            <CardDescription>
+              Enter your credentials to access your account
+            </CardDescription>
           </CardHeader>
+          
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="example@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
               </div>
+              
               <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
-                  <LockKeyhole className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                   <Input
+                    id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
                     required
-                    disabled={isLoading}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2"
-                    onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={togglePasswordVisibility}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-muted-foreground" />
-                    )}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </Button>
                 </div>
-                <div className="flex items-center justify-end">
-                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-rentalke-blue hover:bg-rentalke-blue/90"
+
+              <Button 
+                type="submit" 
+                className="w-full"
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </span>
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </div>
                 ) : (
-                  "Sign in"
+                  <div className="flex items-center justify-center">
+                    Sign in
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </div>
                 )}
               </Button>
             </form>
+            
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mt-4 flex gap-2">
+                <Button variant="outline" className="w-full" type="button">
+                  <Github className="mr-2 h-4 w-4" />
+                  Github
+                </Button>
+              </div>
+            </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <div className="text-center text-sm text-muted-foreground">
-              <span>© {new Date().getFullYear()} RentalKE. All rights reserved.</span>
+          
+          <CardFooter className="flex justify-center">
+            <div className="text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <Link to="/register" className="text-primary hover:underline">
+                Sign up
+              </Link>
             </div>
           </CardFooter>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 };

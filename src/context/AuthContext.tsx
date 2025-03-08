@@ -1,12 +1,17 @@
-
 import React, { createContext, useContext, useState } from 'react';
 
 export type User = {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: 'admin' | 'user' | 'manager';
   avatar?: string;
+  department?: string;
+  position?: string;
+  phone?: string;
+  profileImage?: string;
 };
 
 export type AuthContextType = {
@@ -35,7 +40,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     id: '1',
     email: 'user@example.com',
     name: 'Test User',
-    role: 'admin'
+    firstName: 'Test',
+    lastName: 'User',
+    role: 'admin',
+    department: 'Engineering',
+    position: 'Senior Developer',
+    phone: '+1 (555) 123-4567'
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -49,7 +59,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: '1',
         email,
         name: 'Test User',
-        role: 'admin'
+        firstName: 'Test',
+        lastName: 'User',
+        role: 'admin',
+        department: 'Engineering',
+        position: 'Senior Developer',
+        phone: '+1 (555) 123-4567'
       });
     } catch (error) {
       console.error('Login error:', error);
@@ -73,6 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: '1',
         email,
         name,
+        firstName: name.split(' ')[0],
+        lastName: name.split(' ')[1],
         role: 'user'
       });
     } catch (error) {
