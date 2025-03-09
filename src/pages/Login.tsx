@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, ArrowRight, Github, Mail } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 const Login = () => {
   const { login } = useAuth();
@@ -63,7 +63,7 @@ const Login = () => {
         <Card className="border shadow-lg">
           <CardHeader className="space-y-2 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Mail className="h-6 w-6 text-primary" />
+              <ArrowRight className="h-6 w-6 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
             <CardDescription>
@@ -137,26 +137,6 @@ const Login = () => {
                 )}
               </Button>
             </form>
-            
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mt-4 flex gap-2">
-                <Button variant="outline" className="w-full" type="button">
-                  <Github className="mr-2 h-4 w-4" />
-                  Github
-                </Button>
-              </div>
-            </div>
           </CardContent>
           
           <CardFooter className="flex justify-center">
