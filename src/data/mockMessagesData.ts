@@ -1,4 +1,3 @@
-
 export type ContactStatus = 'online' | 'offline' | 'away';
 
 export interface Contact {
@@ -9,6 +8,7 @@ export interface Contact {
   status: ContactStatus;
   unread?: number;
   lastSeen?: string;
+  lastMessage?: string;
 }
 
 export interface Message {
@@ -25,14 +25,14 @@ export type Conversations = {
 };
 
 export const mockContacts: Contact[] = [
-  { id: '1', name: 'Jane Cooper', role: 'Property Manager', avatar: 'https://i.pravatar.cc/150?img=1', status: 'online', unread: 3 },
-  { id: '2', name: 'Robert Fox', role: 'Tenant', avatar: 'https://i.pravatar.cc/150?img=2', status: 'offline', lastSeen: '3h ago' },
-  { id: '3', name: 'Esther Howard', role: 'Admin', avatar: 'https://i.pravatar.cc/150?img=3', status: 'away', lastSeen: '1h ago' },
-  { id: '4', name: 'Leslie Alexander', role: 'Maintenance', avatar: 'https://i.pravatar.cc/150?img=4', status: 'online' },
-  { id: '5', name: 'Guy Hawkins', role: 'Tenant', avatar: 'https://i.pravatar.cc/150?img=5', status: 'offline', lastSeen: '1d ago' },
-  { id: '6', name: 'Wade Warren', role: 'Security', avatar: 'https://i.pravatar.cc/150?img=6', status: 'online' },
-  { id: '7', name: 'Cameron Williamson', role: 'Accounting', avatar: 'https://i.pravatar.cc/150?img=7', status: 'offline', lastSeen: '5h ago' },
-  { id: '8', name: 'Brooklyn Simmons', role: 'Marketing', avatar: 'https://i.pravatar.cc/150?img=8', status: 'away', lastSeen: '30m ago' },
+  { id: '1', name: 'Jane Cooper', role: 'Property Manager', avatar: 'https://i.pravatar.cc/150?img=1', status: 'online', unread: 3, lastMessage: 'Hello, I have a question about the rent payment' },
+  { id: '2', name: 'Robert Fox', role: 'Tenant', avatar: 'https://i.pravatar.cc/150?img=2', status: 'offline', lastSeen: '3h ago', lastMessage: 'Hi, when will the maintenance team fix the bathroom leak?' },
+  { id: '3', name: 'Esther Howard', role: 'Admin', avatar: 'https://i.pravatar.cc/150?img=3', status: 'away', lastSeen: '1h ago', lastMessage: 'The new tenant portal looks great!' },
+  { id: '4', name: 'Leslie Alexander', role: 'Maintenance', avatar: 'https://i.pravatar.cc/150?img=4', status: 'online', lastMessage: 'Just completed the repair work on unit 305' },
+  { id: '5', name: 'Guy Hawkins', role: 'Tenant', avatar: 'https://i.pravatar.cc/150?img=5', status: 'offline', lastSeen: '1d ago', lastMessage: 'When is the next community meeting?' },
+  { id: '6', name: 'Wade Warren', role: 'Security', avatar: 'https://i.pravatar.cc/150?img=6', status: 'online', lastMessage: 'All security checks completed for today' },
+  { id: '7', name: 'Cameron Williamson', role: 'Accounting', avatar: 'https://i.pravatar.cc/150?img=7', status: 'offline', lastSeen: '5h ago', lastMessage: 'Monthly financial report is ready for review' },
+  { id: '8', name: 'Brooklyn Simmons', role: 'Marketing', avatar: 'https://i.pravatar.cc/150?img=8', status: 'away', lastSeen: '30m ago', lastMessage: 'New marketing materials are ready for approval' },
 ];
 
 export const mockConversations: Conversations = {
