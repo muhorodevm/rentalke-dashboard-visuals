@@ -1,7 +1,6 @@
 
 import React from 'react';
-import { MoreHorizontal, Phone, Video } from 'lucide-react';
-import { CardHeader } from '@/components/ui/card';
+import { Phone, Video, MoreHorizontal } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -38,11 +37,11 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({ contact }) => {
   };
 
   return (
-    <CardHeader className="p-4 border-b flex flex-row items-center justify-between">
+    <div className="flex items-center justify-between w-full">
       <div className="flex items-center gap-3">
-        <Avatar>
-          <AvatarImage src={contact.avatar} />
-          <AvatarFallback>
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={contact.avatar} alt={contact.name} />
+          <AvatarFallback className="bg-primary/10 text-primary">
             {contact.name.substring(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -63,15 +62,15 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({ contact }) => {
       </div>
       
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
           <Phone className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
           <Video className="h-4 w-4" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -83,7 +82,7 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({ contact }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </CardHeader>
+    </div>
   );
 };
 

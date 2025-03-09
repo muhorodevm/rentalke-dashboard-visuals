@@ -142,7 +142,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 duration: 0.3, 
                 ease: "easeInOut"
               }}
-              className="max-w-7xl mx-auto"
+              className="w-full max-w-7xl mx-auto"
             >
               {children}
             </motion.div>

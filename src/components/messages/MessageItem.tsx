@@ -57,30 +57,32 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, contact, onAddReacti
       )}
     >
       {!isMe && (
-        <Avatar className="w-8 h-8">
-          <AvatarImage src={contact.avatar} />
-          <AvatarFallback>
+        <Avatar className="w-8 h-8 mt-1">
+          <AvatarImage src={contact.avatar} alt={contact.name} />
+          <AvatarFallback className="bg-primary/10 text-primary">
             {contact.name.substring(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
       )}
       
-      <div className="max-w-[75%]">
+      <div className={cn("max-w-[80%] sm:max-w-[70%]", isMe ? "items-end" : "items-start")}>
         <div className="flex items-end gap-2">
           <div
             className={cn(
-              "rounded-lg p-3 relative group",
+              "rounded-2xl p-3 relative group shadow-sm",
               isMe 
-                ? "bg-primary text-primary-foreground rounded-tr-none" 
-                : "bg-muted rounded-tl-none"
+                ? "bg-primary text-primary-foreground rounded-br-none" 
+                : "bg-card border rounded-bl-none"
             )}
             onDoubleClick={() => setShowReactions(!showReactions)}
           >
             <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
             
             <Popover open={showReactions} onOpenChange={setShowReactions}>
-              <PopoverTrigger className="hidden group-hover:flex absolute -bottom-4 right-2 bg-background border rounded-full p-1 shadow-sm cursor-pointer">
-                <Smile className="h-4 w-4 text-muted-foreground" />
+              <PopoverTrigger asChild>
+                <button className="hidden group-hover:flex absolute -bottom-3 right-2 bg-background border rounded-full p-1 shadow-sm cursor-pointer">
+                  <Smile className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
               </PopoverTrigger>
               <PopoverContent className="w-min p-2" align={isMe ? "end" : "start"}>
                 <div className="flex gap-1">

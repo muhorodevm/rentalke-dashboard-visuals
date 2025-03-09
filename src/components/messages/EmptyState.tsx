@@ -15,16 +15,16 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onNewConversation }) => {
       animate={{ opacity: 1 }}
       className="flex flex-col items-center justify-center h-full p-8 text-center"
     >
-      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-        <MessageSquarePlus className="h-8 w-8 text-primary" />
+      <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+        <MessageSquarePlus className="h-10 w-10 text-primary" />
       </div>
-      <h3 className="font-medium text-lg mb-2">No conversation selected</h3>
-      <p className="text-muted-foreground mb-4 max-w-md">
+      <h3 className="font-medium text-xl mb-3">No conversation selected</h3>
+      <p className="text-muted-foreground mb-6 max-w-md">
         Select a conversation from the list or start a new one to begin messaging.
       </p>
-      <Button onClick={onNewConversation}>
-        <MessageSquarePlus className="mr-2 h-4 w-4" />
-        New Conversation
+      <Button onClick={onNewConversation} size="lg" className="rounded-full px-6">
+        <MessageSquarePlus className="mr-2 h-5 w-5" />
+        Start a new conversation
       </Button>
     </motion.div>
   );

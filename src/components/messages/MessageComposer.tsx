@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Send, Smile } from 'lucide-react';
+import { Send, Smile, PaperclipIcon, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -30,19 +30,24 @@ const MessageComposer: React.FC<MessageComposerProps> = ({ onSendMessage }) => {
   };
 
   return (
-    <div className="flex items-center gap-2 w-full p-4 border-t">
+    <div className="flex items-center gap-1.5 w-full p-3 border-t bg-card/50">
+      <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground">
+        <PaperclipIcon className="h-5 w-5" />
+      </Button>
+      
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="shrink-0">
+          <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground">
             <Smile className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64" align="start">
           <div className="grid grid-cols-6 gap-2">
-            {["😊", "😂", "👍", "❤️", "🎉", "🔥", "👏", "🙏", "💯", "⭐", "❓", "⚡"].map(emoji => (
+            {["😊", "😂", "👍", "❤️", "🎉", "🔥", "👏", "🙏", "💯", "⭐", "❓", "⚡", 
+              "😍", "🤔", "😎", "👋", "🙌", "👌", "🤞", "✅", "⛔", "🎵", "🎁", "🚀"].map(emoji => (
               <button
                 key={emoji}
-                className="text-2xl p-2 hover:bg-muted rounded-md"
+                className="text-xl p-2 hover:bg-muted rounded-md"
                 onClick={() => addEmoji(emoji)}
               >
                 {emoji}
@@ -57,16 +62,26 @@ const MessageComposer: React.FC<MessageComposerProps> = ({ onSendMessage }) => {
         value={newMessage}
         onChange={(e) => setNewMessage(e.target.value)}
         onKeyDown={handleKeyPress}
-        className="flex-1"
+        className="flex-1 bg-muted/30 border-0 focus-visible:ring-1 focus-visible:ring-primary/50"
       />
       
-      <Button 
-        disabled={!newMessage.trim()}
-        onClick={handleSend}
-        className="shrink-0"
-      >
-        <Send className="h-5 w-5" />
-      </Button>
+      {newMessage.trim() ? (
+        <Button 
+          onClick={handleSend}
+          size="icon"
+          className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      ) : (
+        <Button 
+          variant="ghost"
+          size="icon"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <Mic className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   );
 };
