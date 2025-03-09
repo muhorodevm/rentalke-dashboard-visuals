@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bell, Moon, Sun, MessageSquare } from 'lucide-react';
@@ -38,21 +37,17 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
     setUnreadNotifications(0);
   };
   
-  // Get page title based on route
   const getPageTitle = () => {
     const path = location.pathname;
     
-    // Check if it's a user detail page
     if (path.startsWith('/user-management/')) {
       return 'User Details';
     }
     
-    // Check if it's a property detail page
     if (path.startsWith('/properties/') && path !== '/properties') {
       return 'Property Details';
     }
     
-    // Handle other routes
     switch (path) {
       case '/':
         return 'Dashboard';
@@ -77,23 +72,22 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
     }
   };
   
+  const isMobile = window.innerWidth < 768;
+  
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 z-30 h-16 bg-background border-b px-5",
+        "fixed top-0 right-0 z-30 h-16 bg-background border-b px-4 sm:px-5",
         "transition-all duration-300",
-        isSidebarCollapsed ? "left-20" : "left-[260px]"
+        isMobile ? "left-0" : (isSidebarCollapsed ? "left-20" : "left-[260px]")
       )}
     >
       <div className="h-full flex items-center justify-between">
-        {/* Left section - Header title */}
-        <div>
-          <h2 className="text-xl font-semibold">{getPageTitle()}</h2>
+        <div className={cn(isMobile && "ml-12")}>
+          <h2 className="text-lg sm:text-xl font-semibold">{getPageTitle()}</h2>
         </div>
         
-        {/* Right section - actions and profile */}
-        <div className="flex items-center space-x-3">
-          {/* Theme toggle */}
+        <div className="flex items-center space-x-1 sm:space-x-3">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -113,14 +107,12 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
             </AnimatePresence>
           </Button>
           
-          {/* Messages */}
-          <Button variant="ghost" size="icon" className="topbar-icon-btn" asChild>
+          <Button variant="ghost" size="icon" className="topbar-icon-btn hidden xs:flex" asChild>
             <Link to="/messages">
               <MessageSquare size={18} />
             </Link>
           </Button>
           
-          {/* Notifications dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="topbar-icon-btn">
@@ -132,7 +124,7 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuContent align="end" className="w-[280px] sm:w-80">
               <DropdownMenuLabel className="flex items-center justify-between">
                 <span>Notifications</span>
                 {unreadNotifications > 0 && (
@@ -183,10 +175,9 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          {/* User dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 pl-3 pr-0 overflow-hidden" size="sm">
+              <Button variant="ghost" className="relative h-8 pl-2 pr-0 overflow-hidden sm:pl-3" size="sm">
                 <span className="mr-2 hidden sm:inline-block">{user?.name?.split(' ')[0]}</span>
                 <Avatar className="h-8 w-8">
                   {userProfile.avatar ? (

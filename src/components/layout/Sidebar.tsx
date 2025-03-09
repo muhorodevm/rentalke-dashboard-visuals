@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -15,13 +15,15 @@ import { useNavigate } from 'react-router-dom';
 interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
+  isMobile: boolean;
+  isOpen: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar, isMobile, isOpen }) => {
   const location = useLocation();
   const { toast } = useToast();
   const { logout } = useAuth();
-  
+  const navigate = useNavigate();
   
   const navigationItems = [
     { name: 'Dashboard', path: '/', icon: Home },
@@ -40,20 +42,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
       title: "Logging out",
       description: "You have been logged out successfully.",
     });
-    logout(); // Call the logout function from the context
-    
+    logout();
+    navigate('/login');
   };
   
+  // Don't render sidebar at all if on mobile and closed
+  if (isMobile && !isOpen) {
+    return null;
+  }
+  
   const sidebarVariants = {
-    expanded: { width: 260 },
-    collapsed: { width: 80 }
+    expanded: { width: 260, x: 0 },
+    collapsed: { width: 80, x: 0 },
+    mobileOpen: { x: 0 },
+    mobileClosed: { x: '-100%' }
   };
   
   return (
     <motion.aside
-      className="fixed left-0 top-0 bottom-0 h-screen bg-sidebar z-40 border-r"
-      initial="expanded"
-      animate={isCollapsed ? 'collapsed' : 'expanded'}
+      className={cn(
+        "fixed left-0 top-0 bottom-0 h-screen bg-sidebar z-40 border-r",
+        isMobile && "w-[260px]"
+      )}
+      initial={isMobile ? "mobileClosed" : (isCollapsed ? "collapsed" : "expanded")}
+      animate={isMobile ? "mobileOpen" : (isCollapsed ? "collapsed" : "expanded")}
       variants={sidebarVariants}
       transition={{ duration: 0.3, ease: "easeInOut" }}
     >
@@ -66,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                 RK
               </div>
             </div>
-            {!isCollapsed && (
+            {(!isCollapsed || isMobile) && (
               <motion.h1 
                 className="ml-3 text-xl font-semibold"
                 initial={{ opacity: 0 }}
@@ -78,13 +90,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
               </motion.h1>
             )}
           </div>
-          <button
-            onClick={toggleSidebar}
-            className="sidebar-toggle-btn"
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
+          {!isMobile && (
+            <button
+              onClick={toggleSidebar}
+              className="sidebar-toggle-btn"
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+          )}
+          {isMobile && (
+            <button
+              onClick={toggleSidebar}
+              className="sidebar-toggle-btn"
+              aria-label="Close sidebar"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          )}
         </div>
 
         {/* Navigation links */}
@@ -102,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                     )}
                   >
                     <item.icon size={20} />
-                    {!isCollapsed && (
+                    {(!isCollapsed || isMobile) && (
                       <motion.span
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -124,7 +147,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
           <div className="space-y-1.5">
             <Link to="/help" className="sidebar-item">
               <HelpCircle size={20} />
-              {!isCollapsed && (
+              {(!isCollapsed || isMobile) && (
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -135,9 +158,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                 </motion.span>
               )}
             </Link>
-            <Link to="/login" className="sidebar-item w-full text-left">
+            <button onClick={handleLogout} className="sidebar-item w-full text-left">
               <LogOut size={20} />
-              {!isCollapsed && (
+              {(!isCollapsed || isMobile) && (
                 <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -147,7 +170,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, toggleSidebar }) => {
                   Logout
                 </motion.span>
               )}
-            </Link>
+            </button>
           </div>
         </div>
       </div>
