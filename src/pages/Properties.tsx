@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -107,14 +106,12 @@ const Properties = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['properties'],
     queryFn: fetchProperties,
-    onSettled: (data, error) => {
-      if (error) {
-        toast({
-          title: 'Error fetching properties',
-          description: error instanceof Error ? error.message : 'An unknown error occurred',
-          variant: 'destructive',
-        });
-      }
+    onError: (error) => {
+      toast({
+        title: 'Error fetching properties',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive',
+      });
     },
   });
 
