@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, AlertTriangle } from 'lucide-react';
 
 const Login = () => {
   const { login } = useAuth();
@@ -19,9 +18,11 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
     
     if (!email || !password) {
       toast({
@@ -41,11 +42,21 @@ const Login = () => {
         description: "Welcome back to the dashboard.",
       });
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
+      
+      // Provide more specific error messages based on the response
+      if (error.response && error.response.status === 401) {
+        setErrorMsg('Invalid credentials. Please check your email and password.');
+      } else if (error.message && error.message.includes('Network Error')) {
+        setErrorMsg('Network error. Please check your internet connection or try again later.');
+      } else {
+        setErrorMsg('Login failed. Please try again later.');
+      }
+      
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: errorMsg || "Unable to authenticate. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -55,6 +66,12 @@ const Login = () => {
   
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+  
+  // Demo credentials for testing
+  const setDemoCredentials = () => {
+    setEmail('admin@example.com');
+    setPassword('password123');
   };
   
   return (
@@ -72,6 +89,13 @@ const Login = () => {
           </CardHeader>
           
           <CardContent>
+            {errorMsg && (
+              <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive flex items-start">
+                <AlertTriangle className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -136,6 +160,18 @@ const Login = () => {
                   </div>
                 )}
               </Button>
+              
+              <div className="text-center">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2 text-xs"
+                  onClick={setDemoCredentials}
+                >
+                  Use demo credentials
+                </Button>
+              </div>
             </form>
           </CardContent>
           
