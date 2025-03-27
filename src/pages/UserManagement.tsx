@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useUsers } from '@/context/UserContext';
+import { useUsers, User } from '@/context/UserContext';
 import {
-  Search, Filter, MoreHorizontal, PlusCircle, Trash,UserRound,
-  BadgeCheck,
-  Users,
-  ShieldCheck
+  Search, Filter, MoreHorizontal, PlusCircle, Trash, UserRound,
+  BadgeCheck, Users, ShieldCheck, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,7 +83,7 @@ const UserManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { users, loading, error, fetchUsers } = useUsers();
-  const [filteredUsers, setFilteredUsers] = useState(users);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -93,6 +91,7 @@ const UserManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -106,14 +105,26 @@ const UserManagement = () => {
     }
   });
   
+  // Handle refreshing users list
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchUsers();
+    setIsRefreshing(false);
+  };
+  
   // Update filtered users when users or filters change
   useEffect(() => {
-    let result = users;
+    if (!users || users.length === 0) {
+      setFilteredUsers([]);
+      return;
+    }
+    
+    let result = [...users];
     
     // Search filter
     if (searchTerm) {
       result = result.filter(user => 
-        (user.firstName + ' ' + user.lastName).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (user.position && user.position.toLowerCase().includes(searchTerm.toLowerCase()))
       );
@@ -168,7 +179,7 @@ const UserManagement = () => {
   };
   
   const toggleSelectAll = () => {
-    if (selectedUsers.length === filteredUsers.length) {
+    if (selectedUsers.length === filteredUsers.length && filteredUsers.length > 0) {
       setSelectedUsers([]);
     } else {
       setSelectedUsers(filteredUsers.map(user => user.id));
@@ -228,14 +239,6 @@ const UserManagement = () => {
     }
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full">Loading users...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-500">Error loading users: {error}</div>;
-  }
-  
   return (
     <div className="space-y-6">
       <div>
@@ -290,6 +293,15 @@ const UserManagement = () => {
                     <SelectItem value="pending">Pending</SelectItem>
                   </SelectContent>
                 </Select>
+                
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                </Button>
               </div>
             </div>
             
@@ -312,113 +324,134 @@ const UserManagement = () => {
             </div>
           </div>
           
-          {/* User table */}
-          <div className="border rounded-md overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox 
-                      checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                  <TableHead className="min-w-[180px]">Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Role</TableHead>
-                  <TableHead className="hidden md:table-cell">Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Last Active</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.length === 0 ? (
+          {/* Loading or error state */}
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-primary mb-2" />
+                <p className="text-muted-foreground">Loading users...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center text-center">
+                <p className="text-red-500 font-semibold mb-2">Error loading users</p>
+                <p className="text-muted-foreground mb-4">{error}</p>
+                <Button onClick={handleRefresh}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* User table */
+            <div className="border rounded-md overflow-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No users found
-                    </TableCell>
+                    <TableHead className="w-[50px]">
+                      <Checkbox 
+                        checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead className="min-w-[180px]">Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Role</TableHead>
+                    <TableHead className="hidden md:table-cell">Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Active</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow 
-                      key={user.id} 
-                      className="cursor-pointer hover:bg-muted/70"
-                      onClick={() => handleViewUser(user.id)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox 
-                          checked={selectedUsers.includes(user.id)}
-                          onCheckedChange={() => toggleUserSelection(user.id)}
-                          aria-label={`Select ${user.firstName} ${user.lastName}`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={user.profileImage} />
-                            <AvatarFallback>
-                              {user.firstName.substring(0, 1).toUpperCase() + user.lastName.substring(0, 1).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{user.firstName} {user.lastName}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge className={cn("flex items-center gap-1 px-2 py-1 capitalize font-normal", getRoleBadgeColor(user.role))}>
-                          {getRoleIcon(user.role)}
-                          {user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge className={cn("capitalize font-normal", getStatusColor(user.status))}>{user.status}</Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <span className="text-sm text-muted-foreground">
-                          {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
-                        </span>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewUser(user.id);
-                            }}>
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              // Edit user functionality would go here
-                            }}>
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setUserToDelete(user.id);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No users found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <TableRow 
+                        key={user.id} 
+                        className="cursor-pointer hover:bg-muted/70"
+                        onClick={() => handleViewUser(user.id)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox 
+                            checked={selectedUsers.includes(user.id)}
+                            onCheckedChange={() => toggleUserSelection(user.id)}
+                            aria-label={`Select ${user.firstName} ${user.lastName}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={user.profileImage} />
+                              <AvatarFallback>
+                                {user.firstName.substring(0, 1).toUpperCase() + user.lastName.substring(0, 1).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{user.firstName} {user.lastName}</p>
+                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge className={cn("flex items-center gap-1 px-2 py-1 capitalize font-normal", getRoleBadgeColor(user.role))}>
+                            {getRoleIcon(user.role)}
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge className={cn("capitalize font-normal", getStatusColor(user.status))}>{user.status}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <span className="text-sm text-muted-foreground">
+                            {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
+                          </span>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewUser(user.id);
+                              }}>
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                // Edit user functionality would go here
+                              }}>
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUserToDelete(user.id);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       </div>
       

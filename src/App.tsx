@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { UserProvider } from "@/context/UserContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import Layout from "@/components/layout/Layout";
 import Index from "./pages/Index";
@@ -23,7 +24,6 @@ import Payments from "./pages/Payments";
 import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
 import PrivateRoute from "@/components/layout/PrivateRoute";
-import { UserProvider } from "@/context/UserContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,30 +41,30 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <UserProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              
-              {/* Wrap protected routes with PrivateRoute */}
-              <Route element={<PrivateRoute />}>
-                <Route path="/" element={<Layout><Index /></Layout>} />
-                <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
-                <Route path="/messages" element={<Layout><Messages /></Layout>} />
-                <Route path="/settings" element={<Layout><Settings /></Layout>} />
-                <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
-                <Route path="/user-management" element={<Layout><UserManagement /></Layout>} />
-                <Route path="/user-management/:id" element={<Layout><UserDetail /></Layout>} />
-                <Route path="/profile" element={<Layout><Profile /></Layout>} />
-                <Route path="/payments" element={<Layout><Payments /></Layout>} />
-                <Route path="/properties" element={<Layout><Properties /></Layout>} />
-                <Route path="/properties/:id" element={<Layout><PropertyDetail /></Layout>} />
-              </Route>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                
+                {/* Wrap protected routes with PrivateRoute */}
+                <Route element={<PrivateRoute />}>
+                  <Route path="/" element={<Layout><Index /></Layout>} />
+                  <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
+                  <Route path="/messages" element={<Layout><Messages /></Layout>} />
+                  <Route path="/settings" element={<Layout><Settings /></Layout>} />
+                  <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
+                  <Route path="/user-management" element={<Layout><UserManagement /></Layout>} />
+                  <Route path="/user-management/:id" element={<Layout><UserDetail /></Layout>} />
+                  <Route path="/profile" element={<Layout><Profile /></Layout>} />
+                  <Route path="/payments" element={<Layout><Payments /></Layout>} />
+                  <Route path="/properties" element={<Layout><Properties /></Layout>} />
+                  <Route path="/properties/:id" element={<Layout><PropertyDetail /></Layout>} />
+                </Route>
 
-              {/* Fallback route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                {/* Fallback route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </UserProvider>
           </AuthProvider>
         </BrowserRouter>
