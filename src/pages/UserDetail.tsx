@@ -32,158 +32,188 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { useUsers, User as UserType } from '@/context/UserContext';
+import { adminApi } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 
-// Mock user data (expanded with more details)
-const mockUserDetails = [
-  { 
-    id: '1', 
-    name: 'Devon Lane', 
-    email: 'devon@example.com', 
-    role: 'admin', 
-    position: 'System Administrator',
-    status: 'active', 
-    lastActive: '5 min ago', 
-    avatar: 'https://i.pravatar.cc/150?img=1',
-    department: 'IT',
-    joinDate: 'January 15, 2023',
-    phone: '+1 (555) 123-4567',
-    address: '123 Tech Street, Silicon Valley, CA',
-    biography: 'Experienced system administrator with over 10 years in property management software.',
-    permissions: ['full_access', 'user_management', 'billing_access', 'reports', 'api_access'],
-    recentActivity: [
-      { action: 'User Created', timestamp: '2023-01-15 09:30 AM', details: 'Created user account for Jane Cooper' },
-      { action: 'Permission Modified', timestamp: '2023-02-01 02:15 PM', details: 'Updated permission set for Marketing team' },
-      { action: 'System Update', timestamp: '2023-02-15 11:45 AM', details: 'Deployed system update v2.3.5' },
-      { action: 'Login', timestamp: '2023-03-01 08:12 AM', details: 'Logged in from 192.168.1.105' },
-      { action: 'Settings Changed', timestamp: '2023-03-10 03:22 PM', details: 'Updated notification preferences' }
-    ],
-    assignedProperties: [
-      { id: 'p1', name: 'Sunset Gardens Estate', type: 'estate', units: 24 },
-      { id: 'p4', name: 'Westlands Commercial Plaza', type: 'building', units: 45 }
-    ]
-  },
-  { 
-    id: '2', 
-    name: 'Jane Cooper', 
-    email: 'jane@example.com', 
-    role: 'manager', 
-    position: 'Property Manager',
-    status: 'active', 
-    lastActive: '1 hour ago', 
-    avatar: 'https://i.pravatar.cc/150?img=2',
-    department: 'Management',
-    joinDate: 'February 3, 2023',
-    phone: '+1 (555) 987-6543',
-    address: '456 Manager Ave, Downtown, NY',
-    biography: 'Property management professional specializing in residential high-rises and commercial spaces.',
-    permissions: ['property_management', 'tenant_communication', 'maintenance_requests', 'reports_view'],
-    recentActivity: [
-      { action: 'Property Added', timestamp: '2023-02-10 10:15 AM', details: 'Added Green Towers property' },
-      { action: 'Tenant Issue', timestamp: '2023-02-25 09:30 AM', details: 'Resolved maintenance request #RT-7823' },
-      { action: 'Login', timestamp: '2023-03-01 07:45 AM', details: 'Logged in from mobile device' },
-      { action: 'Report Generated', timestamp: '2023-03-15 01:30 PM', details: 'Generated quarterly revenue report' }
-    ],
-    assignedProperties: [
-      { id: 'p2', name: 'Green Towers', type: 'building', units: 120 }
-    ]
-  },
-  { 
-    id: '3', 
-    name: 'Esther Howard', 
-    email: 'esther@example.com', 
-    role: 'user', 
-    position: 'Tenant',
-    status: 'active', 
-    lastActive: '3 hours ago', 
-    avatar: 'https://i.pravatar.cc/150?img=3',
-    department: 'Residents',
-    joinDate: 'March 12, 2023',
-    phone: '+1 (555) 234-5678',
-    address: 'Apt 303, Riverside Apartments, River Dr',
-    biography: 'Living in Riverside Apartments since March 2023. Works as a marketing executive.',
-    permissions: ['profile_edit', 'payment_view', 'maintenance_request'],
-    recentActivity: [
-      { action: 'Rent Payment', timestamp: '2023-03-15 09:15 AM', details: 'Paid rent for April 2023 - $1,500' },
-      { action: 'Maintenance Request', timestamp: '2023-03-20 02:30 PM', details: 'Submitted request for kitchen sink repair' },
-      { action: 'Login', timestamp: '2023-03-25 07:15 PM', details: 'Logged in from mobile device' }
-    ],
-    assignedProperties: [
-      { id: 'p3', name: 'Riverside Apartments', type: 'apartment', units: null }
-    ]
-  },
-  { 
-    id: '4', 
-    name: 'Jenny Wilson', 
-    email: 'jenny@example.com', 
-    role: 'user', 
-    position: 'Maintenance Staff',
-    status: 'inactive', 
-    lastActive: '2 days ago', 
-    avatar: 'https://i.pravatar.cc/150?img=4',
-    department: 'Maintenance',
-    joinDate: 'January 5, 2023',
-    phone: '+1 (555) 345-6789',
-    address: '789 Worker St, Service District, CA',
-    biography: 'Experienced maintenance professional specializing in electrical and plumbing systems.',
-    permissions: ['maintenance_management', 'inventory_access', 'property_access'],
-    recentActivity: [
-      { action: 'Task Completed', timestamp: '2023-03-10 11:45 AM', details: 'Completed maintenance task #MT-3452' },
-      { action: 'Inventory Update', timestamp: '2023-03-12 03:20 PM', details: 'Updated plumbing supplies inventory' },
-      { action: 'Task Assigned', timestamp: '2023-03-15 08:30 AM', details: 'Assigned to electrical repair at Green Towers' },
-      { action: 'Login', timestamp: '2023-03-15 08:35 AM', details: 'Logged in from mobile device' }
-    ],
-    assignedProperties: [
-      { id: 'p1', name: 'Sunset Gardens Estate', type: 'estate', units: 24 },
-      { id: 'p2', name: 'Green Towers', type: 'building', units: 120 }
-    ]
-  },
-  { 
-    id: '5', 
-    name: 'Guy Hawkins', 
-    email: 'guy@example.com', 
-    role: 'user', 
-    position: 'Security Guard',
-    status: 'pending', 
-    lastActive: 'Never', 
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    department: 'Security',
-    joinDate: 'March 25, 2023',
-    phone: '+1 (555) 456-7890',
-    address: '101 Security Blvd, Watchtower, CA',
-    biography: 'Former military personnel with extensive experience in security operations.',
-    permissions: ['security_logs', 'visitor_management', 'incident_reports'],
-    recentActivity: [
-      { action: 'Account Created', timestamp: '2023-03-25 10:00 AM', details: 'User account created by Devon Lane' }
-    ],
-    assignedProperties: [
-      { id: 'p1', name: 'Sunset Gardens Estate', type: 'estate', units: 24 }
-    ]
-  },
-];
+// Define types for user details from the API
+interface UserActivity {
+  action: string;
+  timestamp: string;
+  details: string;
+}
+
+interface AssignedProperty {
+  id: string;
+  name: string;
+  type: string;
+  units?: number | null;
+}
+
+interface UserDetails extends UserType {
+  position?: string;
+  department?: string;
+  phone?: string;
+  address?: string;
+  biography?: string;
+  joinDate?: string;
+  permissions?: string[];
+  recentActivity?: UserActivity[];
+  assignedProperties?: AssignedProperty[];
+}
 
 const UserDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const { users } = useUsers();
+  const { getToken } = useAuth();
   
   useEffect(() => {
-    // In a real app, fetch from API
-    setLoading(true);
-    setTimeout(() => {
-      const foundUser = mockUserDetails.find(u => u.id === id);
-      setUser(foundUser || null);
-      setLoading(false);
-    }, 500);
-  }, [id]);
+    const fetchUserDetails = async () => {
+      try {
+        setLoading(true);
+        
+        // First check if user exists in the context
+        const contextUser = users.find(u => u.id === id);
+        
+        if (contextUser) {
+          // If user exists in context, use it as base data
+          const userDetails: UserDetails = {
+            ...contextUser,
+            position: contextUser.position || 'Not specified',
+            department: contextUser.department || 'Not specified',
+            // Add default values for other fields
+            phone: 'Not specified',
+            address: 'Not specified',
+            biography: 'No biography available',
+            joinDate: new Date(contextUser.createdAt).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+            permissions: ['profile_view'],
+            recentActivity: [],
+            assignedProperties: []
+          };
+          
+          // Try to get additional details from API
+          try {
+            const token = getToken();
+            if (token) {
+              const response = await adminApi.getUserById(id || '');
+              
+              // Merge the API response with the base data
+              if (response.data) {
+                const apiData = response.data;
+                Object.assign(userDetails, {
+                  phone: apiData.phone || userDetails.phone,
+                  address: apiData.address || userDetails.address,
+                  biography: apiData.biography || userDetails.biography,
+                  permissions: apiData.permissions || userDetails.permissions,
+                  recentActivity: apiData.recentActivity || [],
+                  assignedProperties: apiData.assignedProperties || []
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching additional user details:', error);
+            // We already have basic user data, so we don't need to show an error toast
+          }
+          
+          setUser(userDetails);
+        } else {
+          // If user doesn't exist in context, try to fetch directly from API
+          try {
+            const token = getToken();
+            if (token) {
+              const response = await adminApi.getUserById(id || '');
+              
+              if (response.data) {
+                const apiData = response.data;
+                
+                // Format the API data into our UserDetails format
+                const userDetails: UserDetails = {
+                  id: apiData._id || apiData.id || '',
+                  firstName: apiData.firstName || (apiData.name ? apiData.name.split(' ')[0] : ''),
+                  lastName: apiData.lastName || (apiData.name ? apiData.name.split(' ')[1] || '' : ''),
+                  email: apiData.email || '',
+                  role: apiData.role || 'user',
+                  status: apiData.status || 'pending',
+                  position: apiData.position || 'Not specified',
+                  department: apiData.department || 'Not specified',
+                  profileImage: apiData.profileImage || apiData.avatar || '',
+                  lastLogin: apiData.lastLogin || null,
+                  createdAt: apiData.createdAt || new Date().toISOString(),
+                  phone: apiData.phone || 'Not specified',
+                  address: apiData.address || 'Not specified',
+                  biography: apiData.biography || 'No biography available',
+                  joinDate: new Date(apiData.createdAt || Date.now()).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  }),
+                  permissions: apiData.permissions || ['profile_view'],
+                  recentActivity: apiData.recentActivity || [],
+                  assignedProperties: apiData.assignedProperties || []
+                };
+                
+                setUser(userDetails);
+              } else {
+                setUser(null);
+                toast({
+                  title: "User not found",
+                  description: "Could not find user details",
+                  variant: "destructive"
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching user details:', error);
+            setUser(null);
+            toast({
+              title: "Error fetching user",
+              description: "There was an error loading the user details.",
+              variant: "destructive"
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error in user details flow:', error);
+        setUser(null);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserDetails();
+  }, [id, users, toast, getToken]);
   
-  const handleDeleteUser = () => {
-    toast({
-      title: "User deleted",
-      description: "User has been deleted successfully."
-    });
-    navigate('/user-management');
+  const handleDeleteUser = async () => {
+    try {
+      // In a real app, you would call an API to delete the user
+      // await adminApi.deleteUser(id);
+      
+      toast({
+        title: "User deleted",
+        description: "User has been deleted successfully."
+      });
+      navigate('/user-management');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive"
+      });
+    }
   };
   
   const getRoleBadgeColor = (role: string) => {
@@ -259,7 +289,7 @@ const UserDetail = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate('/user-management')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-3xl font-bold tracking-tight">{user.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{user.firstName} {user.lastName}</h1>
         </div>
         
         <div className="flex gap-2">
@@ -300,13 +330,13 @@ const UserDetail = () => {
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={user.avatar} />
+                <AvatarImage src={user.profileImage} />
                 <AvatarFallback className="text-2xl">
-                  {user.name.substring(0, 2).toUpperCase()}
+                  {user.firstName?.substring(0, 1)?.toUpperCase()}{user.lastName?.substring(0, 1)?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </div>
-            <CardTitle className="text-2xl">{user.name}</CardTitle>
+            <CardTitle className="text-2xl">{user.firstName} {user.lastName}</CardTitle>
             <Badge className={cn("inline-flex items-center mt-2", getRoleBadgeColor(user.role))}>
               {getRoleIcon(user.role)}
               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
@@ -394,11 +424,11 @@ const UserDetail = () => {
                 
                 <div>
                   <h3 className="text-lg font-medium mb-3">Assigned Properties</h3>
-                  {user.assignedProperties.length === 0 ? (
+                  {!user.assignedProperties || user.assignedProperties.length === 0 ? (
                     <p className="text-muted-foreground">No properties assigned</p>
                   ) : (
                     <div className="space-y-3">
-                      {user.assignedProperties.map((property: any) => (
+                      {user.assignedProperties.map((property: AssignedProperty) => (
                         <Card key={property.id} className="overflow-hidden">
                           <div className="flex items-center p-4">
                             <Building className="h-8 w-8 mr-4 text-primary" />
@@ -425,19 +455,23 @@ const UserDetail = () => {
               <TabsContent value="activity" className="space-y-4">
                 <h3 className="text-lg font-medium mb-3">Recent Activity</h3>
                 <div className="space-y-4">
-                  {user.recentActivity.map((activity: any, index: number) => (
-                    <div key={index} className="relative pl-6 pb-4">
-                      <div className="absolute left-0 top-0 h-full w-px bg-border" />
-                      <div className="absolute left-[-4px] top-1.5 h-2 w-2 rounded-full bg-primary" />
-                      <div className="mb-1">
-                        <span className="font-medium">{activity.action}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {activity.timestamp}
-                        </span>
+                  {!user.recentActivity || user.recentActivity.length === 0 ? (
+                    <p className="text-muted-foreground">No recent activity</p>
+                  ) : (
+                    user.recentActivity.map((activity: UserActivity, index: number) => (
+                      <div key={index} className="relative pl-6 pb-4">
+                        <div className="absolute left-0 top-0 h-full w-px bg-border" />
+                        <div className="absolute left-[-4px] top-1.5 h-2 w-2 rounded-full bg-primary" />
+                        <div className="mb-1">
+                          <span className="font-medium">{activity.action}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {activity.timestamp}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{activity.details}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">{activity.details}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </TabsContent>
               
@@ -451,15 +485,19 @@ const UserDetail = () => {
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                  {user.permissions.map((permission: string) => (
-                    <div 
-                      key={permission}
-                      className="flex items-center gap-2 p-3 border rounded-lg"
-                    >
-                      <Lock className="h-4 w-4 text-primary" />
-                      <span className="capitalize">{permission.replace(/_/g, ' ')}</span>
-                    </div>
-                  ))}
+                  {!user.permissions || user.permissions.length === 0 ? (
+                    <p className="text-muted-foreground">No permissions assigned</p>
+                  ) : (
+                    user.permissions.map((permission: string) => (
+                      <div 
+                        key={permission}
+                        className="flex items-center gap-2 p-3 border rounded-lg"
+                      >
+                        <Lock className="h-4 w-4 text-primary" />
+                        <span className="capitalize">{permission.replace(/_/g, ' ')}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </TabsContent>
             </CardContent>

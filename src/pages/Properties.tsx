@@ -1,23 +1,18 @@
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { 
-  Building, Search, Filter, ChevronRight, MapPin, 
-  Home, Hotel, House, Plus, Loader2
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { Plus, Search, ArrowUpDown, MoreHorizontal, Filter, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,338 +21,335 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { useQuery } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
-// Define types for the API response
-interface RentalUnit {
+// Define interfaces for property data
+interface PropertyOwner {
   id: string;
   name: string;
-  unitType: string;
-  unitSize: string;
-  unitPrice: number;
-  interiorFeatures: string[];
-  images: string[];
-  availability: 'VACANT' | 'OCCUPIED';
+  email: string;
+  avatar?: string;
 }
 
-interface Building {
+interface PropertyDetail {
   id: string;
   name: string;
-  noOfFloors: number;
-  noOfUnits: number;
-  buildingFeatures: string[];
-  images: string[];
-  rentalUnits: RentalUnit[];
-}
-
-interface EstateData {
-  id: string;
-  name: string;
-  noOfBuildings: number;
-  county: string;
-  subcounty: string;
-  estateFeatures: string[];
-  description: string;
-  images: string[];
-  manager?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
+  address: string;
+  city: string;
+  type: string;
+  status: 'available' | 'occupied' | 'maintenance' | 'pending';
+  units: number;
+  rent: number;
+  owner: PropertyOwner;
+  createdAt: string;
+  imageUrl?: string;
 }
 
 interface PropertyResponse {
-  success: boolean;
-  estates: EstateData[] | null;
+  properties: PropertyDetail[];
+  totalCount: number;
 }
 
+// Mock API function - replace with actual API call
 const fetchProperties = async (): Promise<PropertyResponse> => {
-  try {
-    const response = await fetch('https://rentalke-server-2.onrender.com/api/v1/properties/estates/all');
-    if (!response.ok) {
-      throw new Error('Failed to fetch properties');
-    }
-    const data = await response.json();
-    console.log("Raw API response:", data);
-    return data;
-  } catch (error) {
-    console.error("Fetch error:", error);
-    throw error;
-  }
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Mock data
+  return {
+    properties: [
+      {
+        id: 'prop1',
+        name: 'Sunset Gardens Estate',
+        address: '123 Sunset Blvd',
+        city: 'Los Angeles',
+        type: 'Residential',
+        status: 'available',
+        units: 24,
+        rent: 2500,
+        owner: {
+          id: 'owner1',
+          name: 'Devon Lane',
+          email: 'devon@example.com',
+          avatar: 'https://i.pravatar.cc/150?img=1'
+        },
+        createdAt: '2023-01-15',
+        imageUrl: 'https://images.unsplash.com/photo-1600047509807-f8e71bbe9d74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'
+      },
+      {
+        id: 'prop2',
+        name: 'Green Towers',
+        address: '456 Green Ave',
+        city: 'New York',
+        type: 'Commercial',
+        status: 'occupied',
+        units: 120,
+        rent: 4000,
+        owner: {
+          id: 'owner2',
+          name: 'Jane Cooper',
+          email: 'jane@example.com',
+          avatar: 'https://i.pravatar.cc/150?img=2'
+        },
+        createdAt: '2023-02-20',
+        imageUrl: 'https://images.unsplash.com/photo-1605146769289-440113cc3d00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
+      },
+      {
+        id: 'prop3',
+        name: 'Riverside Apartments',
+        address: '789 River Dr',
+        city: 'Chicago',
+        type: 'Residential',
+        status: 'maintenance',
+        units: 56,
+        rent: 1800,
+        owner: {
+          id: 'owner3',
+          name: 'Esther Howard',
+          email: 'esther@example.com',
+          avatar: 'https://i.pravatar.cc/150?img=3'
+        },
+        createdAt: '2023-03-05',
+        imageUrl: 'https://images.unsplash.com/photo-1592595896551-12b371d546d5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
+      },
+      {
+        id: 'prop4',
+        name: 'Westlands Commercial Plaza',
+        address: '101 Business Park',
+        city: 'San Francisco',
+        type: 'Commercial',
+        status: 'pending',
+        units: 45,
+        rent: 5000,
+        owner: {
+          id: 'owner1',
+          name: 'Devon Lane',
+          email: 'devon@example.com',
+          avatar: 'https://i.pravatar.cc/150?img=1'
+        },
+        createdAt: '2023-04-10',
+        imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
+      },
+    ],
+    totalCount: 4
+  };
 };
 
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
   const { toast } = useToast();
-
+  
+  // Fetch properties using React Query
   const { data, isLoading, error } = useQuery({
     queryKey: ['properties'],
     queryFn: fetchProperties,
-    onError: (error) => {
-      toast({
-        title: 'Error fetching properties',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
-      });
-    },
+    meta: {
+      onError: (err: Error) => {
+        toast({
+          title: "Error loading properties",
+          description: err.message,
+          variant: "destructive"
+        });
+      }
+    }
   });
-
-  console.log("Processed API response:", data); // Debug log
-
-  const getStatusBadge = (status: string) => {
+  
+  // Filter properties based on search term
+  const filteredProperties = data?.properties.filter(property => 
+    property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    property.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    property.type.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+  
+  // Helper function to render property status badge
+  const getStatusBadge = (status: PropertyDetail['status']) => {
     switch (status) {
-      case 'VACANT':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Available</Badge>;
-      case 'OCCUPIED':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Occupied</Badge>;
+      case 'available':
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Available</Badge>;
+      case 'occupied':
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Occupied</Badge>;
+      case 'maintenance':
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Maintenance</Badge>;
+      case 'pending':
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">Pending</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge>Unknown</Badge>;
     }
   };
-
-  const getPropertyTypeIcon = (type: string) => {
-    switch (type) {
-      case 'RESIDENTIAL':
-        return <Home className="h-4 w-4 mr-1" />;
-      case 'COMMERCIAL':
-        return <Building className="h-4 w-4 mr-1" />;
-      default:
-        return <House className="h-4 w-4 mr-1" />;
-    }
-  };
-
-  // Safely handle filtering with null checks
-  const filteredProperties = data?.estates ? data.estates.filter(estate => {
-    if (!estate) return false;
-    
-    const matchesSearch = 
-      estate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      estate.county.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      estate.subcounty.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesSearch;
-  }) : [];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100
-      }
-    }
+  
+  // Render property card skeleton during loading
+  const renderSkeletons = () => {
+    return Array(4).fill(0).map((_, i) => (
+      <Card key={i} className="overflow-hidden">
+        <div className="aspect-video relative">
+          <Skeleton className="absolute inset-0" />
+        </div>
+        <CardHeader className="pb-2">
+          <Skeleton className="h-6 w-2/3 mb-1" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+        </CardContent>
+      </Card>
+    ));
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
           <p className="text-muted-foreground">
-            Manage and view all properties in your portfolio
+            Manage your real estate portfolio
           </p>
         </div>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="h-4 w-4 mr-2" />
           Add Property
         </Button>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-        <div className="md:col-span-4 relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            type="search"
-            placeholder="Search properties by name, county or subcounty..."
-            className="pl-8 w-full"
+            placeholder="Search properties..."
+            className="pl-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="md:col-span-2">
-          <Select
-            value={filterType}
-            onValueChange={setFilterType}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Property Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="RESIDENTIAL">Residential</SelectItem>
-              <SelectItem value="COMMERCIAL">Commercial</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        
+        <Button variant="outline" className="sm:ml-auto w-full sm:w-auto">
+          <Filter className="h-4 w-4 mr-2" /> 
+          Filter
+        </Button>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-auto">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Sort
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Name (A-Z)</DropdownMenuItem>
+            <DropdownMenuItem>Name (Z-A)</DropdownMenuItem>
+            <DropdownMenuItem>Newest first</DropdownMenuItem>
+            <DropdownMenuItem>Oldest first</DropdownMenuItem>
+            <DropdownMenuItem>Highest rent</DropdownMenuItem>
+            <DropdownMenuItem>Lowest rent</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-lg">Loading properties...</p>
+      
+      {error ? (
+        <div className="py-12 text-center">
+          <p className="text-destructive text-lg mb-4">Failed to load properties</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <Building className="h-12 w-12 mx-auto text-muted-foreground" />
-          <h2 className="mt-4 text-lg font-semibold">Failed to load properties</h2>
-          <p className="text-muted-foreground mt-2">
-            Please try again later or contact support.
-          </p>
-          <Button
-            variant="outline"
-            className="mt-4"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </Button>
-        </div>
-      ) : !data?.estates || data.estates.length === 0 ? (
-        <div className="text-center py-12">
-          <Building className="h-12 w-12 mx-auto text-muted-foreground" />
-          <h2 className="mt-4 text-lg font-semibold">No properties found</h2>
-          <p className="text-muted-foreground mt-2">
-            There are currently no properties in the system.
-          </p>
-        </div>
-      ) : filteredProperties.length > 0 ? (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="space-y-10"
-        >
-          {filteredProperties.map((property) => (
-            <motion.div key={property.id} variants={itemVariants} className="space-y-6">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
-                <div>
-                  <h2 className="text-2xl font-bold">{property.name}</h2>
-                  <div className="flex items-center mt-1 text-muted-foreground">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    <span>{property.county}, {property.subcounty}</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {property.estateFeatures && property.estateFeatures.map((feature, idx) => (
-                    <Badge key={idx} variant="outline">{feature}</Badge>
-                  ))}
-                </div>
-              </div>
-              
-              {/* This would need property.buildings, which might be missing in the response */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="relative">
-                    <AspectRatio ratio={16 / 9}>
-                      <img
-                        src={property.images && property.images.length > 0 
-                          ? property.images[0] 
-                          : 'https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80'}
-                        alt={property.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </AspectRatio>
-                    <div className="absolute top-2 right-2">
-                      <Badge className="bg-primary/10 text-primary">{property.noOfBuildings} Buildings</Badge>
-                    </div>
-                  </div>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center">
-                          <Building className="h-4 w-4 mr-1" />
-                          <CardDescription>
-                            Estate
-                          </CardDescription>
-                        </div>
-                        <CardTitle className="text-lg mt-1">{property.name}</CardTitle>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <span className="sr-only">Open menu</span>
-                            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                              <path d="M3.625 7.5C3.625 8.12132 3.12132 8.625 2.5 8.625C1.87868 8.625 1.375 8.12132 1.375 7.5C1.375 6.87868 1.87868 6.375 2.5 6.375C3.12132 6.375 3.625 6.87868 3.625 7.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM13.625 7.5C13.625 8.12132 13.1213 8.625 12.5 8.625C11.8787 8.625 11.375 8.12132 11.375 7.5C11.375 6.87868 11.8787 6.375 12.5 6.375C13.1213 6.375 13.625 6.87868 13.625 7.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                            </svg>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Estate</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            Delete Estate
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                      {property.description || "No description available"}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {property.estateFeatures && property.estateFeatures.map((feature, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">{feature}</Badge>
-                      ))}
-                    </div>
-                    <div className="mt-2 text-sm">
-                      <span className="font-medium">{property.noOfBuildings}</span> buildings
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-2">
-                    <Button variant="outline" size="sm" className="w-full" asChild>
-                      <Link to={`/properties/${property.id}`}>
-                        View Estate Details
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
       ) : (
-        <div className="text-center py-12">
-          <Building className="h-12 w-12 mx-auto text-muted-foreground" />
-          <h2 className="mt-4 text-lg font-semibold">No properties found</h2>
-          <p className="text-muted-foreground mt-2">
-            No properties match your current search criteria.
-          </p>
-          <Button
-            variant="outline"
-            className="mt-4"
-            onClick={() => {
-              setSearchTerm('');
-              setFilterType('all');
-            }}
-          >
-            Clear Filters
-          </Button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {isLoading ? (
+            renderSkeletons()
+          ) : filteredProperties.length === 0 ? (
+            <div className="col-span-full py-12 text-center">
+              <p className="text-lg mb-2">No properties found</p>
+              <p className="text-muted-foreground">Try adjusting your search terms</p>
+            </div>
+          ) : (
+            filteredProperties.map(property => (
+              <Card key={property.id} className="overflow-hidden">
+                <div className="aspect-video relative">
+                  {property.imageUrl ? (
+                    <img
+                      src={property.imageUrl}
+                      alt={property.name}
+                      className="absolute inset-0 object-cover w-full h-full"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                      <MapPin className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg">{property.name}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <a href={`/properties/${property.id}`}>View Details</a>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>Edit Property</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive">
+                          Remove Property
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <CardDescription>
+                    {property.address}, {property.city}
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-medium">{property.type}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {property.units} {property.units === 1 ? 'unit' : 'units'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">${property.rent.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">per month</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    {getStatusBadge(property.status)}
+                    <div className="flex items-center">
+                      <Avatar className="h-8 w-8 mr-2">
+                        <AvatarImage src={property.owner.avatar} />
+                        <AvatarFallback>
+                          {property.owner.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="text-xs text-muted-foreground truncate max-w-[100px]">
+                        {property.owner.name}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+                
+                <CardFooter className="pt-0">
+                  <Button variant="outline" asChild className="w-full">
+                    <a href={`/properties/${property.id}`}>View Details</a>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          )}
         </div>
       )}
     </div>

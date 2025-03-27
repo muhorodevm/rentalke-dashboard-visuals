@@ -63,6 +63,7 @@ export const adminApi = {
   getUserById: (userId: string) => api.get(`/admin/users/${userId}`),
   updateUserRole: (userId: string, data: { role?: string, department?: string, position?: string }) => 
     api.patch(`/admin/users/${userId}/role`, data),
+  deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
 };
 
 // Email Templates API
