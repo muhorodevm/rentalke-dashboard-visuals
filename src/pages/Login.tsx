@@ -80,7 +80,9 @@ const Login = () => {
         <Card className="border shadow-lg">
           <CardHeader className="space-y-2 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <ArrowRight className="h-6 w-6 text-primary" />
+            <div className="flex justify-center mb-2">
+              <img src="https://res.cloudinary.com/dyzssa40e/image/upload/v1739030444/5852517438091020422_ei4dkm.jpg" alt="RentalKE Logo" className="h-12 w-auto" />
+            </div>
             </div>
             <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
             <CardDescription>
@@ -176,11 +178,8 @@ const Login = () => {
           </CardContent>
           
           <CardFooter className="flex justify-center">
-            <div className="text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link to="/register" className="text-primary hover:underline">
-                Sign up
-              </Link>
+          <div className="text-center text-sm text-muted-foreground">
+              <span>© {new Date().getFullYear()} RentalKE. All rights reserved.</span>
             </div>
           </CardFooter>
         </Card>

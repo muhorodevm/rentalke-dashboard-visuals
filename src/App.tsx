@@ -23,6 +23,7 @@ import Payments from "./pages/Payments";
 import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
 import PrivateRoute from "@/components/layout/PrivateRoute";
+import { UserProvider } from "@/context/UserContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +40,7 @@ const App = () => (
       <TooltipProvider>
         <BrowserRouter>
           <AuthProvider>
+            <UserProvider>
             <Toaster />
             <Sonner />
             <Routes>
@@ -63,6 +65,7 @@ const App = () => (
               {/* Fallback route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </UserProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

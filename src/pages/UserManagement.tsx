@@ -1,15 +1,10 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useUsers } from '@/context/UserContext';
 import {
-  Search,
-  Filter,
-  MoreHorizontal,
-  PlusCircle,
-  Trash,
-  UserRound,
+  Search, Filter, MoreHorizontal, PlusCircle, Trash,UserRound,
   BadgeCheck,
   Users,
   ShieldCheck
@@ -69,77 +64,6 @@ import * as z from 'zod';
 
 type UserStatus = 'active' | 'inactive' | 'pending';
 
-type UserData = {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user' | 'manager';
-  position?: string;
-  status: UserStatus;
-  lastActive: string;
-  avatar?: string;
-  department?: string;
-};
-
-// Mock user data
-const mockUsers = [
-  { 
-    id: '1', 
-    name: 'Devon Lane', 
-    email: 'devon@example.com', 
-    role: 'admin' as const, 
-    position: 'System Administrator',
-    status: 'active' as UserStatus, 
-    lastActive: '5 min ago', 
-    avatar: 'https://i.pravatar.cc/150?img=1',
-    department: 'IT'
-  },
-  { 
-    id: '2', 
-    name: 'Jane Cooper', 
-    email: 'jane@example.com', 
-    role: 'manager' as const, 
-    position: 'Property Manager',
-    status: 'active' as UserStatus, 
-    lastActive: '1 hour ago', 
-    avatar: 'https://i.pravatar.cc/150?img=2',
-    department: 'Management'
-  },
-  { 
-    id: '3', 
-    name: 'Esther Howard', 
-    email: 'esther@example.com', 
-    role: 'user' as const, 
-    position: 'Tenant',
-    status: 'active' as UserStatus, 
-    lastActive: '3 hours ago', 
-    avatar: 'https://i.pravatar.cc/150?img=3',
-    department: 'Residents'
-  },
-  { 
-    id: '4', 
-    name: 'Jenny Wilson', 
-    email: 'jenny@example.com', 
-    role: 'user' as const, 
-    position: 'Maintenance Staff',
-    status: 'inactive' as UserStatus, 
-    lastActive: '2 days ago', 
-    avatar: 'https://i.pravatar.cc/150?img=4',
-    department: 'Maintenance'
-  },
-  { 
-    id: '5', 
-    name: 'Guy Hawkins', 
-    email: 'guy@example.com', 
-    role: 'user' as const, 
-    position: 'Security Guard',
-    status: 'pending' as UserStatus, 
-    lastActive: 'Never', 
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    department: 'Security'
-  },
-];
-
 // User form schema
 const userFormSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -160,8 +84,8 @@ const UserManagement = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [users, setUsers] = useState<UserData[]>(mockUsers);
-  const [filteredUsers, setFilteredUsers] = useState<UserData[]>(mockUsers);
+  const { users, loading, error, fetchUsers } = useUsers();
+  const [filteredUsers, setFilteredUsers] = useState(users);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -182,13 +106,14 @@ const UserManagement = () => {
     }
   });
   
-  React.useEffect(() => {
+  // Update filtered users when users or filters change
+  useEffect(() => {
     let result = users;
     
     // Search filter
     if (searchTerm) {
       result = result.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.firstName + ' ' + user.lastName).toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (user.position && user.position.toLowerCase().includes(searchTerm.toLowerCase()))
       );
@@ -207,9 +132,10 @@ const UserManagement = () => {
     setFilteredUsers(result);
   }, [users, searchTerm, roleFilter, statusFilter]);
   
-  const handleDeleteUser = (id: string) => {
-    const updatedUsers = users.filter(user => user.id !== id);
-    setUsers(updatedUsers);
+  const handleDeleteUser = async (id: string) => {
+    // Here you would typically make an API call to delete the user
+    // For now, we'll just refresh the users list
+    await fetchUsers();
     setSelectedUsers(prevSelected => prevSelected.filter(userId => userId !== id));
     
     toast({
@@ -221,9 +147,10 @@ const UserManagement = () => {
     setUserToDelete(null);
   };
   
-  const handleMultiDelete = () => {
-    const updatedUsers = users.filter(user => !selectedUsers.includes(user.id));
-    setUsers(updatedUsers);
+  const handleMultiDelete = async () => {
+    // Here you would typically make an API call to delete multiple users
+    // For now, we'll just refresh the users list
+    await fetchUsers();
     setSelectedUsers([]);
     
     toast({
@@ -248,19 +175,10 @@ const UserManagement = () => {
     }
   };
   
-  const onSubmit = (data: UserFormValues) => {
-    const newUser: UserData = {
-      id: (users.length + 1).toString(),
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      position: data.position || undefined,
-      status: data.status,
-      lastActive: 'Just now',
-      department: data.department || undefined,
-    };
-    
-    setUsers([...users, newUser]);
+  const onSubmit = async (data: UserFormValues) => {
+    // Here you would typically make an API call to create the user
+    // For now, we'll just refresh the users list
+    await fetchUsers();
     
     toast({
       title: "User created",
@@ -309,6 +227,14 @@ const UserManagement = () => {
         return <UserRound className="h-4 w-4 mr-1" />;
     }
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-full">Loading users...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error loading users: {error}</div>;
+  }
   
   return (
     <div className="space-y-6">
@@ -423,19 +349,19 @@ const UserManagement = () => {
                         <Checkbox 
                           checked={selectedUsers.includes(user.id)}
                           onCheckedChange={() => toggleUserSelection(user.id)}
-                          aria-label={`Select ${user.name}`}
+                          aria-label={`Select ${user.firstName} ${user.lastName}`}
                         />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
-                            <AvatarImage src={user.avatar} />
+                            <AvatarImage src={user.profileImage} />
                             <AvatarFallback>
-                              {user.name.substring(0, 2).toUpperCase()}
+                              {user.firstName.substring(0, 1).toUpperCase() + user.lastName.substring(0, 1).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{user.name}</p>
+                            <p className="font-medium">{user.firstName} {user.lastName}</p>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                           </div>
                         </div>
@@ -450,7 +376,9 @@ const UserManagement = () => {
                         <Badge className={cn("capitalize font-normal", getStatusColor(user.status))}>{user.status}</Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        <span className="text-sm text-muted-foreground">{user.lastActive}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
+                        </span>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>

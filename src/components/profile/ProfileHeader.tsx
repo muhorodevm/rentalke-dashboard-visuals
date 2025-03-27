@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User } from '@/context/AuthContext';
+import { useAuth, User } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,14 @@ import { Edit, Settings, Shield } from 'lucide-react';
 import { userProfile } from '@/data/dummyData';
 import { motion } from 'framer-motion';
 
-interface ProfileHeaderProps {
-  user: User | null;
-}
+// interface ProfileHeaderProps {
+//   user: User | null;
+// }
 
-const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
+const ProfileHeader = () => {
+  const {user} = useAuth();
   if (!user) return null;
+  console.log(user);
   
   return (
     <div className="space-y-6">
@@ -45,7 +47,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
       >
         <Avatar className="h-24 w-24">
           {userProfile.avatar ? (
-            <AvatarImage src={userProfile.avatar} alt={user.name || ""} />
+            <AvatarImage src={user?.profileImage} alt={user.name || ""} />
           ) : (
             <AvatarFallback className="text-2xl">
               {user.name?.substring(0, 2).toUpperCase() || ""}
@@ -57,9 +59,9 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <h2 className="text-2xl font-bold">{user.name}</h2>
-              <Badge className="inline-flex items-center bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+              <Badge className="flex justify-center items-center bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
                 <Shield className="h-3.5 w-3.5 mr-1" />
-                Administrator
+                <p className="text-sm font-medium text-yellow-400">{user?.position}</p>
               </Badge>
             </div>
             <p className="text-muted-foreground">{user.email}</p>
@@ -68,15 +70,19 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-2">
             <div className="rounded-md border p-3">
               <p className="text-sm font-medium text-muted-foreground">Member Since</p>
-              <p className="mt-1 font-semibold">January 2023</p>
+              <p className="mt-1 font-semibold">
+  {new Date(user.createdAt).toLocaleDateString()}
+</p>
             </div>
             <div className="rounded-md border p-3">
               <p className="text-sm font-medium text-muted-foreground">Last Login</p>
-              <p className="mt-1 font-semibold">Today, 10:30 AM</p>
+              <p className="mt-1 font-semibold">
+  {(user.lastLogin || new Date(0)).toLocaleDateString()}
+</p>
             </div>
             <div className="rounded-md border p-3">
               <p className="text-sm font-medium text-muted-foreground">Status</p>
-              <p className="mt-1 font-semibold text-green-600">Active</p>
+              <p className="mt-1 font-semibold text-green-600">{user?.status}</p>
             </div>
           </div>
           

@@ -8,12 +8,16 @@ export type User = {
   name: string;
   firstName?: string;
   lastName?: string;
-  role: 'admin' | 'user' | 'manager';
-  avatar?: string;
+  role?:string;
   department?: string;
   position?: string;
   phone?: string;
   profileImage?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  status?: string;
+  lastLogin?: Date;
+  
 };
 
 interface AuthResponse {
@@ -36,7 +40,7 @@ export type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = 'https://rentalke-server-2.onrender.com/api/v1/admin/login';
+const API_URL = 'https://rentalke-server-kmrj.onrender.com/api/v1/admin/login';
 
 // Helper function to check if token is expired
 const isTokenExpired = (token: string): boolean => {
@@ -99,6 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await axios.post<AuthResponse>(API_URL, { email, password });
       
+      
+  
       if (response.data.success && response.data.token) {
         const { token, user: userData } = response.data;
         
@@ -121,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   };
+  
 
   const logout = () => {
     // Clear localStorage
@@ -146,7 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name,
         firstName: name.split(' ')[0],
         lastName: name.split(' ')[1],
-        role: 'user'
+        role: 'user',
+
       });
     } catch (error) {
       console.error('Registration error:', error);

@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { log } from 'console';
 
 interface TopbarProps {
   isSidebarCollapsed: boolean;
@@ -28,6 +29,8 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
   
   const { logout } = useAuth();
   const { user } = useAuth();
+  // console.log(user);
+  
 
   const [unreadNotifications, setUnreadNotifications] = useState(
     notificationsData.filter(n => !n.read).length
@@ -180,8 +183,8 @@ const Topbar: React.FC<TopbarProps> = ({ isSidebarCollapsed }) => {
               <Button variant="ghost" className="relative h-8 pl-2 pr-0 overflow-hidden sm:pl-3" size="sm">
                 <span className="mr-2 hidden sm:inline-block">{user?.name?.split(' ')[0]}</span>
                 <Avatar className="h-8 w-8">
-                  {userProfile.avatar ? (
-                    <AvatarImage src={userProfile.avatar} alt={user?.name || ""} />
+                  {user.profileImage ? (
+                    <AvatarImage src={user?.profileImage} alt={user?.name || ""} />
                   ) : (
                     <AvatarFallback>
                       {user?.name?.substring(0, 2).toUpperCase() || ""}
