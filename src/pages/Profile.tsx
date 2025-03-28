@@ -1,18 +1,20 @@
 
 import React from 'react';
-import { ProfileHeader } from '@/components/profile/ProfileHeader';
-import { ProfileForm } from '@/components/profile/ProfileForm';
-import { ThemeCustomizer } from '@/components/profile/ThemeCustomizer';
+
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
+import ProfileForm from '../components/profile/ProfileForm';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import ThemeCustomizer from '@/components/profile/ThemeCustomizer';
 
 const Profile = () => {
   const { user } = useAuth();
   
   return (
     <div className="space-y-8">
-      <ProfileHeader />
+      <ProfileHeader/>
       
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid grid-cols-3 w-full max-w-lg">
@@ -22,7 +24,7 @@ const Profile = () => {
         </TabsList>
         <TabsContent value="general" className="mt-6">
           <Card className="p-6">
-            <ProfileForm />
+            <ProfileForm/>
           </Card>
         </TabsContent>
         <TabsContent value="security" className="mt-6">
@@ -35,7 +37,7 @@ const Profile = () => {
           </Card>
         </TabsContent>
         <TabsContent value="preferences" className="mt-6">
-          <ThemeCustomizer />
+          <ThemeCustomizer/>
         </TabsContent>
       </Tabs>
     </div>
