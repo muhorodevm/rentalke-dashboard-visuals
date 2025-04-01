@@ -1,8 +1,8 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-import { useAuth } from '@/context/AuthContext';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { adminApi } from '@/services/api';
 
 // Define TypeScript interfaces for the user data structure
 export interface User {
@@ -19,13 +19,22 @@ export interface User {
   createdAt: string;
 }
 
+interface UserCache {
+  data: User[];
+  timestamp: number;
+}
+
 interface UserContextType {
   users: User[];
   loading: boolean;
   error: string | null;
-  fetchUsers: () => Promise<void>;
+  fetchUsers: (forceRefresh?: boolean) => Promise<void>;
   logUsers: () => void;
+  clearCache: () => void;
 }
+
+// Cache expiration time (30 minutes)
+const CACHE_EXPIRATION = 30 * 60 * 1000;
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
@@ -36,113 +45,130 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const { getToken } = useAuth();
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
+  // Clear the users cache
+  const clearCache = useCallback(() => {
+    localStorage.removeItem('usersCache');
+    toast({
+      title: "Cache cleared",
+      description: "User cache has been cleared.",
+    });
+  }, [toast]);
+
+  // Function to get cached users
+  const getCachedUsers = useCallback((): UserCache | null => {
+    const cachedData = localStorage.getItem('usersCache');
+    if (!cachedData) return null;
+    
     try {
-      setLoading(true);
+      const parsedCache = JSON.parse(cachedData) as UserCache;
+      const now = new Date().getTime();
+      
+      // Check if cache is expired
+      if (now - parsedCache.timestamp > CACHE_EXPIRATION) {
+        localStorage.removeItem('usersCache');
+        return null;
+      }
+      
+      return parsedCache;
+    } catch (error) {
+      localStorage.removeItem('usersCache');
+      return null;
+    }
+  }, []);
+  
+  // Save users to cache
+  const saveUsersToCache = useCallback((userData: User[]) => {
+    const cacheData: UserCache = {
+      data: userData,
+      timestamp: new Date().getTime(),
+    };
+    localStorage.setItem('usersCache', JSON.stringify(cacheData));
+  }, []);
+
+  const fetchUsers = useCallback(async (forceRefresh = false) => {
+    try {
       setError(null);
+      
+      // Check cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedUsers = getCachedUsers();
+        if (cachedUsers) {
+          setUsers(cachedUsers.data);
+          setLoading(false);
+          console.log('Using cached user data');
+          return;
+        }
+      }
+      
+      // No valid cache or forcing refresh, fetch from API
+      setLoading(true);
       
       const token = getToken();
       if (!token) {
         throw new Error('Authentication token not available');
       }
 
-      const response = await axios.get('https://rentalke-server-kmrj.onrender.com/api/v1/admin/all/users', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const response = await adminApi.getAllUsers();
       console.log('Fetched Users API Response:', response.data);
       
-      // Map the API response to our User interface
-      // Handle different possible response structures
       let mappedUsers: User[] = [];
       
-      if (Array.isArray(response.data)) {
+      if (response.data && Array.isArray(response.data)) {
         // If response.data is already an array
-        mappedUsers = response.data.map((user: any) => ({
-          id: user._id || user.id || '',
-          firstName: user.firstName || (user.name ? user.name.split(' ')[0] : ''),
-          lastName: user.lastName || (user.name ? user.name.split(' ')[1] || '' : ''),
-          email: user.email || '',
-          role: user.role || 'user',
-          status: user.status || 'pending',
-          position: user.position || '',
-          department: user.department || '',
-          profileImage: user.profileImage || user.avatar || '',
-          lastLogin: user.lastLogin || null,
-          createdAt: user.createdAt || new Date().toISOString(),
-        }));
-      } else if (response.data.users && Array.isArray(response.data.users)) {
+        mappedUsers = mapApiResponseToUsers(response.data);
+      } else if (response.data && response.data.users && Array.isArray(response.data.users)) {
         // If response.data has a users array property
-        mappedUsers = response.data.users.map((user: any) => ({
-          id: user._id || user.id || '',
-          firstName: user.firstName || (user.name ? user.name.split(' ')[0] : ''),
-          lastName: user.lastName || (user.name ? user.name.split(' ')[1] || '' : ''),
-          email: user.email || '',
-          role: user.role || 'user',
-          status: user.status || 'pending',
-          position: user.position || '',
-          department: user.department || '',
-          profileImage: user.profileImage || user.avatar || '',
-          lastLogin: user.lastLogin || null,
-          createdAt: user.createdAt || new Date().toISOString(),
-        }));
-      } else if (response.data.data && Array.isArray(response.data.data)) {
+        mappedUsers = mapApiResponseToUsers(response.data.users);
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
         // If response.data has a data array property
-        mappedUsers = response.data.data.map((user: any) => ({
-          id: user._id || user.id || '',
-          firstName: user.firstName || (user.name ? user.name.split(' ')[0] : ''),
-          lastName: user.lastName || (user.name ? user.name.split(' ')[1] || '' : ''),
-          email: user.email || '',
-          role: user.role || 'user',
-          status: user.status || 'pending',
-          position: user.position || '',
-          department: user.department || '',
-          profileImage: user.profileImage || user.avatar || '',
-          lastLogin: user.lastLogin || null,
-          createdAt: user.createdAt || new Date().toISOString(),
-        }));
+        mappedUsers = mapApiResponseToUsers(response.data.data);
       }
       
       console.log('Mapped Users:', mappedUsers);
-      setUsers(mappedUsers);
       
-      // Show success toast if users were fetched
-      if (mappedUsers.length > 0) {
-        toast({
-          title: "Users fetched successfully",
-          description: `Loaded ${mappedUsers.length} users.`,
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "No users found",
-          description: "The system couldn't find any users.",
-          variant: "destructive",
-        });
-      }
+      // Save to state and cache
+      setUsers(mappedUsers);
+      saveUsersToCache(mappedUsers);
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch users';
       setError(errorMessage);
       console.error('Error fetching users:', errorMessage);
       
-      toast({
-        title: "Error fetching users",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      // Only show error toast if no cached data available
+      if (!getCachedUsers()?.data.length) {
+        toast({
+          title: "Error fetching users",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
+  }, [getToken, toast, getCachedUsers, saveUsersToCache]);
+
+  const mapApiResponseToUsers = (data: any[]): User[] => {
+    return data.map((user: any) => ({
+      id: user._id || user.id || '',
+      firstName: user.firstName || (user.name ? user.name.split(' ')[0] : ''),
+      lastName: user.lastName || (user.name ? user.name.split(' ')[1] || '' : ''),
+      email: user.email || '',
+      role: user.role || 'user',
+      status: user.status || 'pending',
+      position: user.position || '',
+      department: user.department || '',
+      profileImage: user.profileImage || user.avatar || '',
+      lastLogin: user.lastLogin || null,
+      createdAt: user.createdAt || new Date().toISOString(),
+    }));
   };
 
   const logUsers = () => {
     console.log('Current Users:', users);
   };
 
+  // Initial fetch on mount
   useEffect(() => {
     const initialize = async () => {
       try {
@@ -156,10 +182,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
     
     initialize();
-  }, []);
+  }, [getToken, fetchUsers]);
 
   return (
-    <UserContext.Provider value={{ users, loading, error, fetchUsers, logUsers }}>
+    <UserContext.Provider value={{ users, loading, error, fetchUsers, logUsers, clearCache }}>
       {children}
     </UserContext.Provider>
   );

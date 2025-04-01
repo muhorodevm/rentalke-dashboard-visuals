@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useUsers, User } from '@/context/UserContext';
 import {
   Search, Filter, MoreHorizontal, PlusCircle, Trash, UserRound,
-  BadgeCheck, Users, ShieldCheck, RefreshCw
+  BadgeCheck, Users, ShieldCheck, RefreshCw, Database, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,15 +27,14 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose
+  DialogTitle
 } from '@/components/ui/dialog';
 import { 
   Select,
@@ -51,11 +51,7 @@ import {
   FormLabel,
   FormMessage
 } from '@/components/ui/form';
-
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -78,11 +74,32 @@ const userFormSchema = z.object({
 
 type UserFormValues = z.infer<typeof userFormSchema>;
 
+// Loading skeleton for the user table
+const UserTableSkeleton = () => (
+  <div className="border rounded-md overflow-hidden">
+    <div className="bg-muted/50 p-4">
+      <Skeleton className="h-8 w-full max-w-[250px]" />
+    </div>
+    <div className="p-4 space-y-3">
+      {Array(5).fill(0).map((_, index) => (
+        <div key={index} className="flex items-center space-x-4">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-4 w-1/3" />
+          </div>
+          <Skeleton className="h-8 w-[100px]" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const UserManagement = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { users, loading, error, fetchUsers } = useUsers();
+  const { users, loading, error, fetchUsers, clearCache } = useUsers();
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -105,12 +122,27 @@ const UserManagement = () => {
     }
   });
   
-  // Handle refreshing users list
-  const handleRefresh = async () => {
+  // Handle refreshing users list with force refresh option
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchUsers();
-    setIsRefreshing(false);
-  };
+    try {
+      await fetchUsers(true); // Force refresh from API
+      toast({
+        title: "Users refreshed",
+        description: "User list has been updated from the server.",
+      });
+    } catch (error) {
+      console.error("Error refreshing users:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchUsers, toast]);
+  
+  // Handle clearing the cache
+  const handleClearCache = useCallback(() => {
+    clearCache();
+    handleRefresh();
+  }, [clearCache, handleRefresh]);
   
   // Update filtered users when users or filters change
   useEffect(() => {
@@ -144,30 +176,51 @@ const UserManagement = () => {
   }, [users, searchTerm, roleFilter, statusFilter]);
   
   const handleDeleteUser = async (id: string) => {
-    // Here you would typically make an API call to delete the user
-    // For now, we'll just refresh the users list
-    await fetchUsers();
-    setSelectedUsers(prevSelected => prevSelected.filter(userId => userId !== id));
-    
-    toast({
-      title: "User deleted",
-      description: "User has been deleted successfully."
-    });
-    
-    setIsDeleteDialogOpen(false);
-    setUserToDelete(null);
+    try {
+      // Call the API to delete the user
+      // await adminApi.deleteUser(id);
+      // For now just refresh the list
+      await fetchUsers(true);
+      setSelectedUsers(prevSelected => prevSelected.filter(userId => userId !== id));
+      
+      toast({
+        title: "User deleted",
+        description: "User has been deleted successfully."
+      });
+      
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error deleting user",
+        description: "An error occurred while trying to delete the user.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleMultiDelete = async () => {
-    // Here you would typically make an API call to delete multiple users
-    // For now, we'll just refresh the users list
-    await fetchUsers();
-    setSelectedUsers([]);
-    
-    toast({
-      title: `${selectedUsers.length} users deleted`,
-      description: "Users have been deleted successfully."
-    });
+    try {
+      // Here would typically be an API call to delete multiple users
+      // For now, we'll just refresh the users list
+      await fetchUsers(true);
+      setSelectedUsers([]);
+      
+      toast({
+        title: `${selectedUsers.length} users deleted`,
+        description: "Users have been deleted successfully."
+      });
+      
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Error deleting multiple users:", error);
+      toast({
+        title: "Error deleting users",
+        description: "An error occurred while trying to delete users.",
+        variant: "destructive"
+      });
+    }
   };
   
   const toggleUserSelection = (id: string) => {
@@ -187,17 +240,28 @@ const UserManagement = () => {
   };
   
   const onSubmit = async (data: UserFormValues) => {
-    // Here you would typically make an API call to create the user
-    // For now, we'll just refresh the users list
-    await fetchUsers();
-    
-    toast({
-      title: "User created",
-      description: "New user has been created successfully."
-    });
-    
-    setIsAddUserDialogOpen(false);
-    form.reset();
+    try {
+      // Here you would typically make an API call to create the user
+      console.log("Creating new user:", data);
+      
+      // Then refresh the list
+      await fetchUsers(true);
+      
+      toast({
+        title: "User created",
+        description: "New user has been created successfully."
+      });
+      
+      setIsAddUserDialogOpen(false);
+      form.reset();
+    } catch (error) {
+      console.error("Error creating user:", error);
+      toast({
+        title: "Error creating user",
+        description: "An error occurred while trying to create the user.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleViewUser = (userId: string) => {
@@ -238,6 +302,47 @@ const UserManagement = () => {
         return <UserRound className="h-4 w-4 mr-1" />;
     }
   };
+  
+  // Render empty state for no users
+  const renderEmptyState = () => (
+    <div className="text-center py-12">
+      <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+      <h3 className="text-lg font-medium mb-1">No users found</h3>
+      <p className="text-muted-foreground mb-4">
+        {searchTerm || roleFilter !== 'all' || statusFilter !== 'all' 
+          ? "Try adjusting your filters or search terms" 
+          : "No users have been added yet"}
+      </p>
+      {!(searchTerm || roleFilter !== 'all' || statusFilter !== 'all') && (
+        <Button onClick={() => setIsAddUserDialogOpen(true)}>
+          <PlusCircle className="h-4 w-4 mr-1" />
+          Add First User
+        </Button>
+      )}
+    </div>
+  );
+  
+  // Render error state
+  const renderErrorState = () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center text-center max-w-md">
+        <p className="text-red-500 font-semibold mb-2">Error loading users</p>
+        <p className="text-muted-foreground mb-4">
+          {error || "An error occurred while trying to load users. Please try again."}
+        </p>
+        <div className="flex gap-3">
+          <Button onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+          <Button variant="outline" onClick={handleClearCache}>
+            <Database className="h-4 w-4 mr-2" />
+            Clear Cache
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -300,7 +405,11 @@ const UserManagement = () => {
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                 >
-                  <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                  {isRefreshing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -324,27 +433,17 @@ const UserManagement = () => {
             </div>
           </div>
           
-          {/* Loading or error state */}
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="flex flex-col items-center">
-                <RefreshCw className="h-8 w-8 animate-spin text-primary mb-2" />
-                <p className="text-muted-foreground">Loading users...</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="flex flex-col items-center text-center">
-                <p className="text-red-500 font-semibold mb-2">Error loading users</p>
-                <p className="text-muted-foreground mb-4">{error}</p>
-                <Button onClick={handleRefresh}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* User table */
+          {/* Loading state */}
+          {loading && <UserTableSkeleton />}
+          
+          {/* Error state */}
+          {!loading && error && renderErrorState()}
+          
+          {/* Empty state */}
+          {!loading && !error && filteredUsers.length === 0 && renderEmptyState()}
+          
+          {/* User table */}
+          {!loading && !error && filteredUsers.length > 0 && (
             <div className="border rounded-md overflow-auto">
               <Table>
                 <TableHeader>
@@ -364,90 +463,82 @@ const UserManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No users found
+                  {filteredUsers.map((user) => (
+                    <TableRow 
+                      key={user.id} 
+                      className="cursor-pointer hover:bg-muted/70"
+                      onClick={() => handleViewUser(user.id)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox 
+                          checked={selectedUsers.includes(user.id)}
+                          onCheckedChange={() => toggleUserSelection(user.id)}
+                          aria-label={`Select ${user.firstName} ${user.lastName}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarImage src={user.profileImage} />
+                            <AvatarFallback>
+                              {user.firstName.substring(0, 1).toUpperCase() + user.lastName.substring(0, 1).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.firstName} {user.lastName}</p>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge className={cn("flex items-center gap-1 px-2 py-1 capitalize font-normal", getRoleBadgeColor(user.role))}>
+                          {getRoleIcon(user.role)}
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge className={cn("capitalize font-normal", getStatusColor(user.status))}>{user.status}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <span className="text-sm text-muted-foreground">
+                          {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
+                        </span>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewUser(user.id);
+                            }}>
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              // Edit user functionality would go here
+                            }}>
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUserToDelete(user.id);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow 
-                        key={user.id} 
-                        className="cursor-pointer hover:bg-muted/70"
-                        onClick={() => handleViewUser(user.id)}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox 
-                            checked={selectedUsers.includes(user.id)}
-                            onCheckedChange={() => toggleUserSelection(user.id)}
-                            aria-label={`Select ${user.firstName} ${user.lastName}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarImage src={user.profileImage} />
-                              <AvatarFallback>
-                                {user.firstName.substring(0, 1).toUpperCase() + user.lastName.substring(0, 1).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{user.firstName} {user.lastName}</p>
-                              <p className="text-sm text-muted-foreground">{user.email}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Badge className={cn("flex items-center gap-1 px-2 py-1 capitalize font-normal", getRoleBadgeColor(user.role))}>
-                            {getRoleIcon(user.role)}
-                            {user.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Badge className={cn("capitalize font-normal", getStatusColor(user.status))}>{user.status}</Badge>
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <span className="text-sm text-muted-foreground">
-                            {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
-                          </span>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewUser(user.id);
-                              }}>
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                // Edit user functionality would go here
-                              }}>
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setUserToDelete(user.id);
-                                  setIsDeleteDialogOpen(true);
-                                }}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>

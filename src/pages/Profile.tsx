@@ -1,11 +1,9 @@
 
 import React from 'react';
-
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
-import ProfileForm from '../components/profile/ProfileForm';
+import ProfileForm from '@/components/profile/ProfileForm';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ThemeCustomizer from '@/components/profile/ThemeCustomizer';
 

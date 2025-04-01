@@ -8,7 +8,9 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  // Add timeout to prevent hanging requests
+  timeout: 15000,
 });
 
 // Add token to requests
@@ -21,6 +23,19 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle network errors or timeouts gracefully
+    if (error.code === 'ECONNABORTED' || !error.response) {
+      console.error('Network error or timeout:', error.message);
+      return Promise.reject(new Error('Network error. Please check your connection and try again.'));
+    }
+    return Promise.reject(error);
+  }
 );
 
 // Profile API

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -19,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +61,63 @@ interface UserDetails extends UserType {
   assignedProperties?: AssignedProperty[];
 }
 
+// Component for skeleton loading state
+const UserDetailSkeleton = () => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-10 rounded-full" />
+        <Skeleton className="h-8 w-64" />
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-32" />
+      </div>
+    </div>
+    
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-center">
+            <Skeleton className="h-24 w-24 rounded-full" />
+          </div>
+          <Skeleton className="h-8 w-full mt-4" />
+          <Skeleton className="h-6 w-1/2 mx-auto mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Array(5).fill(0).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-5 w-5" />
+              <div className="space-y-1 flex-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <Skeleton className="h-10 w-full" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-6 w-1/3" />
+            <div className="grid grid-cols-2 gap-3">
+              {Array(4).fill(0).map((_, i) => (
+                <Skeleton key={i} className="h-28 w-full" />
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+);
+
 const UserDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -71,17 +127,62 @@ const UserDetail = () => {
   const { users } = useUsers();
   const { getToken } = useAuth();
   
+  // Create a cache key specific to this user
+  const userCacheKey = `user_${id}`;
+  
+  // Get user from cache
+  const getCachedUser = useCallback((): UserDetails | null => {
+    const cachedData = sessionStorage.getItem(userCacheKey);
+    if (!cachedData) return null;
+    
+    try {
+      const parsedCache = JSON.parse(cachedData);
+      // Check if cache is fresh (less than 5 minutes old)
+      const now = new Date().getTime();
+      if (now - parsedCache.timestamp > 5 * 60 * 1000) {
+        sessionStorage.removeItem(userCacheKey);
+        return null;
+      }
+      
+      return parsedCache.data;
+    } catch (error) {
+      sessionStorage.removeItem(userCacheKey);
+      return null;
+    }
+  }, [userCacheKey]);
+  
+  // Save user to cache
+  const saveUserToCache = useCallback((userData: UserDetails) => {
+    const cacheData = {
+      data: userData,
+      timestamp: new Date().getTime(),
+    };
+    sessionStorage.setItem(userCacheKey, JSON.stringify(cacheData));
+  }, [userCacheKey]);
+  
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
         setLoading(true);
         
+        // Check cache first
+        const cachedUser = getCachedUser();
+        if (cachedUser) {
+          setUser(cachedUser);
+          setLoading(false);
+          console.log('Using cached user details');
+          return;
+        }
+        
         // First check if user exists in the context
         const contextUser = users.find(u => u.id === id);
         
+        // Initialize with basic data if available from context
+        let userDetails: UserDetails | null = null;
+        
         if (contextUser) {
           // If user exists in context, use it as base data
-          const userDetails: UserDetails = {
+          userDetails = {
             ...contextUser,
             position: contextUser.position || 'Not specified',
             department: contextUser.department || 'Not specified',
@@ -98,44 +199,22 @@ const UserDetail = () => {
             recentActivity: [],
             assignedProperties: []
           };
-          
-          // Try to get additional details from API
-          try {
-            const token = getToken();
-            if (token) {
-              const response = await adminApi.getUserById(id || '');
+        }
+        
+        // Always try to get full details from API, whether we have context data or not
+        try {
+          console.log('Fetching user details from API for ID:', id);
+          const token = getToken();
+          if (token) {
+            const response = await adminApi.getUserById(id || '');
+            console.log('API Response for user details:', response.data);
+            
+            if (response.data) {
+              const apiData = response.data;
               
-              // Merge the API response with the base data
-              if (response.data) {
-                const apiData = response.data;
-                Object.assign(userDetails, {
-                  phone: apiData.phone || userDetails.phone,
-                  address: apiData.address || userDetails.address,
-                  biography: apiData.biography || userDetails.biography,
-                  permissions: apiData.permissions || userDetails.permissions,
-                  recentActivity: apiData.recentActivity || [],
-                  assignedProperties: apiData.assignedProperties || []
-                });
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching additional user details:', error);
-            // We already have basic user data, so we don't need to show an error toast
-          }
-          
-          setUser(userDetails);
-        } else {
-          // If user doesn't exist in context, try to fetch directly from API
-          try {
-            const token = getToken();
-            if (token) {
-              const response = await adminApi.getUserById(id || '');
-              
-              if (response.data) {
-                const apiData = response.data;
-                
-                // Format the API data into our UserDetails format
-                const userDetails: UserDetails = {
+              if (!userDetails) {
+                // If we didn't have context data, create full object from API data
+                userDetails = {
                   id: apiData._id || apiData.id || '',
                   firstName: apiData.firstName || (apiData.name ? apiData.name.split(' ')[0] : ''),
                   lastName: apiData.lastName || (apiData.name ? apiData.name.split(' ')[1] || '' : ''),
@@ -159,33 +238,45 @@ const UserDetail = () => {
                   recentActivity: apiData.recentActivity || [],
                   assignedProperties: apiData.assignedProperties || []
                 };
-                
-                setUser(userDetails);
               } else {
-                setUser(null);
-                toast({
-                  title: "User not found",
-                  description: "Could not find user details",
-                  variant: "destructive"
+                // If we had context data, enrich it with API data
+                Object.assign(userDetails, {
+                  phone: apiData.phone || userDetails.phone,
+                  address: apiData.address || userDetails.address,
+                  biography: apiData.biography || userDetails.biography,
+                  permissions: apiData.permissions || userDetails.permissions,
+                  recentActivity: apiData.recentActivity || userDetails.recentActivity,
+                  assignedProperties: apiData.assignedProperties || userDetails.assignedProperties
                 });
               }
             }
-          } catch (error) {
-            console.error('Error fetching user details:', error);
-            setUser(null);
-            toast({
-              title: "Error fetching user",
-              description: "There was an error loading the user details.",
-              variant: "destructive"
-            });
           }
+        } catch (error) {
+          console.error('Error fetching additional user details:', error);
+          // If we don't have any user data at this point, show error
+          if (!userDetails) {
+            throw error;
+          }
+          // Otherwise continue with what we have from context
+        }
+        
+        if (userDetails) {
+          setUser(userDetails);
+          // Save complete data to cache
+          saveUserToCache(userDetails);
+        } else {
+          toast({
+            title: "User not found",
+            description: "Could not find user details",
+            variant: "destructive"
+          });
         }
       } catch (error) {
         console.error('Error in user details flow:', error);
         setUser(null);
         toast({
           title: "Error",
-          description: "An unexpected error occurred.",
+          description: "There was an error loading the user details. Please try again later.",
           variant: "destructive"
         });
       } finally {
@@ -194,12 +285,11 @@ const UserDetail = () => {
     };
     
     fetchUserDetails();
-  }, [id, users, toast, getToken]);
+  }, [id, users, toast, getToken, getCachedUser, saveUserToCache]);
   
   const handleDeleteUser = async () => {
     try {
-      // In a real app, you would call an API to delete the user
-      // await adminApi.deleteUser(id);
+      await adminApi.deleteUser(id || '');
       
       toast({
         title: "User deleted",
@@ -252,11 +342,7 @@ const UserDetail = () => {
   };
 
   if (loading) {
-    return (
-      <div className="h-[calc(100vh-200px)] flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-t-2 border-primary border-solid rounded-full" />
-      </div>
-    );
+    return <UserDetailSkeleton />;
   }
   
   if (!user) {
