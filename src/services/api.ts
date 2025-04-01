@@ -1,7 +1,6 @@
-
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://rentalke-server-2.onrender.com/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'https://rentalke-server-kmrj.onrender.com/api/v1';
 
 // Create axios instance
 const api = axios.create({

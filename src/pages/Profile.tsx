@@ -8,7 +8,7 @@ import ProfileHeader from '@/components/profile/ProfileHeader';
 import ThemeCustomizer from '@/components/profile/ThemeCustomizer';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   
   return (
     <div className="space-y-8">
@@ -22,7 +22,7 @@ const Profile = () => {
         </TabsList>
         <TabsContent value="general" className="mt-6">
           <Card className="p-6">
-            <ProfileForm/>
+            <ProfileForm user={user} updateProfile={updateProfile} />
           </Card>
         </TabsContent>
         <TabsContent value="security" className="mt-6">
