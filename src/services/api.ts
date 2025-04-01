@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://rentalke-server-kmrj.onrender.com/api/v1';
@@ -15,7 +16,7 @@ const api = axios.create({
 // Add token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -33,6 +34,12 @@ api.interceptors.response.use(
       console.error('Network error or timeout:', error.message);
       return Promise.reject(new Error('Network error. Please check your connection and try again.'));
     }
+    
+    // Handle authentication errors quietly without console logs
+    if (error.response && error.response.status === 401) {
+      return Promise.reject(new Error('Authentication required. Please log in again.'));
+    }
+    
     return Promise.reject(error);
   }
 );

@@ -28,29 +28,38 @@ export interface Property {
 }
 
 export const useManagerProperties = () => {
-  const { user } = useAuth();
+  const { user, getToken } = useAuth();
   const { toast } = useToast();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [isCurrentUserManager, setIsCurrentUserManager] = useState(false);
   
+  // Check if user is authenticated before making requests
+  const token = getToken();
+  const isAuthenticated = !!token && !!user;
+  
   // Fetch all users and filter for managers
   const { data: usersData, isLoading: isLoadingUsers, error: usersError } = useQuery({
     queryKey: ['managers'],
     queryFn: async () => {
+      if (!isAuthenticated) {
+        throw new Error('Authentication required');
+      }
       const response = await adminApi.getAllUsers();
-      console.log('All users response:', response.data);
       return response.data;
     },
+    enabled: isAuthenticated,
     meta: {
       onError: (error: any) => {
-        console.error('Error fetching managers:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load manager data. Please try again later.',
-          variant: 'destructive',
-        });
+        // Only show error toast for non-auth errors
+        if (!error.message.includes('Authentication required')) {
+          toast({
+            title: 'Error',
+            description: 'Failed to load manager data. Please try again later.',
+            variant: 'destructive',
+          });
+        }
       }
     }
   });
@@ -80,7 +89,6 @@ export const useManagerProperties = () => {
           }))
         : [];
       
-      console.log('Filtered managers:', managersList);
       setManagers(managersList);
       
       // Check if current user is a manager
@@ -93,19 +101,23 @@ export const useManagerProperties = () => {
   const { data: propertiesData, isLoading: isLoadingProperties, error: propertiesError } = useQuery({
     queryKey: ['properties', managers],
     queryFn: async () => {
+      if (!isAuthenticated) {
+        throw new Error('Authentication required');
+      }
       const response = await propertiesApi.getAllProperties();
-      console.log('All properties response:', response.data);
       return response.data;
     },
-    enabled: managers.length > 0,
+    enabled: isAuthenticated && managers.length > 0,
     meta: {
       onError: (error: any) => {
-        console.error('Error fetching properties:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load properties data. Please try again later.',
-          variant: 'destructive',
-        });
+        // Only show error toast for non-auth errors
+        if (!error.message.includes('Authentication required')) {
+          toast({
+            title: 'Error',
+            description: 'Failed to load properties data. Please try again later.',
+            variant: 'destructive',
+          });
+        }
       }
     }
   });
@@ -122,7 +134,6 @@ export const useManagerProperties = () => {
       }
       
       if (!Array.isArray(propertyData)) {
-        console.error('Properties data is not an array:', propertyData);
         return;
       }
 
@@ -150,7 +161,6 @@ export const useManagerProperties = () => {
         };
       });
 
-      console.log('Mapped properties:', allProperties);
       setProperties(allProperties);
 
       // Filter properties if user is a manager
@@ -158,7 +168,6 @@ export const useManagerProperties = () => {
         const userProperties = allProperties.filter(
           prop => prop.manager.id === user.id || prop.manager.email === user.email
         );
-        console.log('Filtered properties for current manager:', userProperties);
         setFilteredProperties(userProperties);
       } else {
         setFilteredProperties(allProperties);

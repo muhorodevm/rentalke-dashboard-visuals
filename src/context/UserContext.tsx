@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -42,9 +41,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getToken } = useAuth();
+  const { getToken, user: authUser } = useAuth();
   const { toast } = useToast();
-
+  
   // Clear the users cache
   const clearCache = useCallback(() => {
     localStorage.removeItem('usersCache');
@@ -95,7 +94,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         if (cachedUsers) {
           setUsers(cachedUsers.data);
           setLoading(false);
-          console.log('Using cached user data');
           return;
         }
       }
@@ -105,26 +103,20 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       
       const token = getToken();
       if (!token) {
-        throw new Error('Authentication token not available');
+        throw new Error('Authentication required');
       }
 
       const response = await adminApi.getAllUsers();
-      console.log('Fetched Users API Response:', response.data);
       
       let mappedUsers: User[] = [];
       
       if (response.data && Array.isArray(response.data)) {
-        // If response.data is already an array
         mappedUsers = mapApiResponseToUsers(response.data);
       } else if (response.data && response.data.users && Array.isArray(response.data.users)) {
-        // If response.data has a users array property
         mappedUsers = mapApiResponseToUsers(response.data.users);
       } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        // If response.data has a data array property
         mappedUsers = mapApiResponseToUsers(response.data.data);
       }
-      
-      console.log('Mapped Users:', mappedUsers);
       
       // Save to state and cache
       setUsers(mappedUsers);
@@ -133,10 +125,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch users';
       setError(errorMessage);
-      console.error('Error fetching users:', errorMessage);
       
-      // Only show error toast if no cached data available
-      if (!getCachedUsers()?.data.length) {
+      // Only show error toast if not an authentication error and no cached data available
+      if (!errorMessage.includes('Authentication required') && !getCachedUsers()?.data.length) {
         toast({
           title: "Error fetching users",
           description: errorMessage,
@@ -173,16 +164,16 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const initialize = async () => {
       try {
         const token = getToken();
-        if (token) {
+        if (token && authUser) {
           await fetchUsers();
         }
       } catch (err) {
-        console.error('Initialization error:', err);
+        // Silently handle initialization errors
       }
     };
     
     initialize();
-  }, [getToken, fetchUsers]);
+  }, [getToken, authUser, fetchUsers]);
 
   return (
     <UserContext.Provider value={{ users, loading, error, fetchUsers, logUsers, clearCache }}>
