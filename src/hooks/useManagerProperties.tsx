@@ -43,14 +43,16 @@ export const useManagerProperties = () => {
       console.log('All users response:', response.data);
       return response.data;
     },
-    onError: (error: any) => {
-      console.error('Error fetching managers:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load manager data. Please try again later.',
-        variant: 'destructive',
-      });
-    },
+    meta: {
+      onError: (error: any) => {
+        console.error('Error fetching managers:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load manager data. Please try again later.',
+          variant: 'destructive',
+        });
+      }
+    }
   });
 
   // Process users data to extract managers
@@ -96,14 +98,16 @@ export const useManagerProperties = () => {
       return response.data;
     },
     enabled: managers.length > 0,
-    onError: (error: any) => {
-      console.error('Error fetching properties:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load properties data. Please try again later.',
-        variant: 'destructive',
-      });
-    },
+    meta: {
+      onError: (error: any) => {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load properties data. Please try again later.',
+          variant: 'destructive',
+        });
+      }
+    }
   });
 
   // Process properties data and filter by manager
