@@ -1,7 +1,5 @@
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, ArrowUpDown, MoreHorizontal, Filter, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,141 +22,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
-
-// Define interfaces for property data
-interface PropertyOwner {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-}
-
-interface PropertyDetail {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  type: string;
-  status: 'available' | 'occupied' | 'maintenance' | 'pending';
-  units: number;
-  rent: number;
-  owner: PropertyOwner;
-  createdAt: string;
-  imageUrl?: string;
-}
-
-interface PropertyResponse {
-  properties: PropertyDetail[];
-  totalCount: number;
-}
-
-// Mock API function - replace with actual API call
-const fetchProperties = async (): Promise<PropertyResponse> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Mock data
-  return {
-    properties: [
-      {
-        id: 'prop1',
-        name: 'Sunset Gardens Estate',
-        address: '123 Sunset Blvd',
-        city: 'Los Angeles',
-        type: 'Residential',
-        status: 'available',
-        units: 24,
-        rent: 2500,
-        owner: {
-          id: 'owner1',
-          name: 'Devon Lane',
-          email: 'devon@example.com',
-          avatar: 'https://i.pravatar.cc/150?img=1'
-        },
-        createdAt: '2023-01-15',
-        imageUrl: 'https://images.unsplash.com/photo-1600047509807-f8e71bbe9d74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'
-      },
-      {
-        id: 'prop2',
-        name: 'Green Towers',
-        address: '456 Green Ave',
-        city: 'New York',
-        type: 'Commercial',
-        status: 'occupied',
-        units: 120,
-        rent: 4000,
-        owner: {
-          id: 'owner2',
-          name: 'Jane Cooper',
-          email: 'jane@example.com',
-          avatar: 'https://i.pravatar.cc/150?img=2'
-        },
-        createdAt: '2023-02-20',
-        imageUrl: 'https://images.unsplash.com/photo-1605146769289-440113cc3d00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
-      },
-      {
-        id: 'prop3',
-        name: 'Riverside Apartments',
-        address: '789 River Dr',
-        city: 'Chicago',
-        type: 'Residential',
-        status: 'maintenance',
-        units: 56,
-        rent: 1800,
-        owner: {
-          id: 'owner3',
-          name: 'Esther Howard',
-          email: 'esther@example.com',
-          avatar: 'https://i.pravatar.cc/150?img=3'
-        },
-        createdAt: '2023-03-05',
-        imageUrl: 'https://images.unsplash.com/photo-1592595896551-12b371d546d5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
-      },
-      {
-        id: 'prop4',
-        name: 'Westlands Commercial Plaza',
-        address: '101 Business Park',
-        city: 'San Francisco',
-        type: 'Commercial',
-        status: 'pending',
-        units: 45,
-        rent: 5000,
-        owner: {
-          id: 'owner1',
-          name: 'Devon Lane',
-          email: 'devon@example.com',
-          avatar: 'https://i.pravatar.cc/150?img=1'
-        },
-        createdAt: '2023-04-10',
-        imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80'
-      },
-    ],
-    totalCount: 4
-  };
-};
+import useManagerProperties from '@/hooks/useManagerProperties';
+import { useAuth } from '@/context/AuthContext';
 
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { toast } = useToast();
-  
-  // Fetch properties using React Query
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['properties'],
-    queryFn: fetchProperties,
-    meta: {
-      onError: (err: Error) => {
-        toast({
-          title: "Error loading properties",
-          description: err.message,
-          variant: "destructive"
-        });
-      }
-    }
-  });
+  const { properties, isLoading, error, isCurrentUserManager } = useManagerProperties();
+  const { user } = useAuth();
   
   // Filter properties based on search term
-  const filteredProperties = data?.properties.filter(property => 
+  const filteredProperties = properties?.filter(property => 
     property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
     property.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -166,7 +39,7 @@ const Properties = () => {
   ) || [];
   
   // Helper function to render property status badge
-  const getStatusBadge = (status: PropertyDetail['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'available':
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Available</Badge>;
@@ -210,7 +83,9 @@ const Properties = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
           <p className="text-muted-foreground">
-            Manage your real estate portfolio
+            {isCurrentUserManager 
+              ? 'Manage your assigned properties' 
+              : 'Manage the real estate portfolio'}
           </p>
         </div>
         <Button>
@@ -267,7 +142,11 @@ const Properties = () => {
           ) : filteredProperties.length === 0 ? (
             <div className="col-span-full py-12 text-center">
               <p className="text-lg mb-2">No properties found</p>
-              <p className="text-muted-foreground">Try adjusting your search terms</p>
+              <p className="text-muted-foreground">
+                {isCurrentUserManager 
+                  ? 'No properties have been assigned to you yet' 
+                  : 'Try adjusting your search terms'}
+              </p>
             </div>
           ) : (
             filteredProperties.map(property => (
@@ -330,13 +209,13 @@ const Properties = () => {
                     {getStatusBadge(property.status)}
                     <div className="flex items-center">
                       <Avatar className="h-8 w-8 mr-2">
-                        <AvatarImage src={property.owner.avatar} />
+                        <AvatarImage src={property.manager.profileImage} />
                         <AvatarFallback>
-                          {property.owner.name.substring(0, 2).toUpperCase()}
+                          {property.manager.name.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <p className="text-xs text-muted-foreground truncate max-w-[100px]">
-                        {property.owner.name}
+                        {property.manager.name}
                       </p>
                     </div>
                   </div>

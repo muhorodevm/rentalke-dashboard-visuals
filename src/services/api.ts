@@ -72,8 +72,7 @@ export const notificationsApi = {
 
 // Admin User Management API
 export const adminApi = {
-  getAllUsers: (page = 1, limit = 10, search = '', role = '') => 
-    api.get(`/admin/users?page=${page}&limit=${limit}&search=${search}&role=${role}`),
+  getAllUsers: () => api.get('/admin/all/users'),
   getUserById: (userId: string) => api.get(`/admin/users/${userId}`),
   updateUserRole: (userId: string, data: { role?: string, department?: string, position?: string }) => 
     api.patch(`/admin/users/${userId}/role`, data),
@@ -89,6 +88,16 @@ export const emailTemplatesApi = {
   deleteTemplate: (templateId: string) => api.delete(`/email-templates/${templateId}`),
   sendEmailNotification: (data: { templateId: string, recipients: string[], variables?: any }) => 
     api.post('/notifications/email', data),
+};
+
+// Properties API
+export const propertiesApi = {
+  getAllProperties: () => api.get('/properties'),
+  getManagerProperties: (managerId: string) => api.get(`/properties/manager/${managerId}`),
+  getPropertyById: (propertyId: string) => api.get(`/properties/${propertyId}`),
+  createProperty: (data: any) => api.post('/properties', data),
+  updateProperty: (propertyId: string, data: any) => api.put(`/properties/${propertyId}`, data),
+  deleteProperty: (propertyId: string) => api.delete(`/properties/${propertyId}`),
 };
 
 export default api;
