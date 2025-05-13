@@ -75,12 +75,12 @@ const Messages = () => {
 
   const addNewIncomingMessage = () => {
     if (selectedContact && selectedContact.id === '1') {
-      const newMsg = {
+      const newMsg: Message = {
         id: `m${Date.now()}`,
         sender: '1',
         text: "Thanks for the information! I'll make the payment today.",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'received' as const
+        status: 'received'
       };
       
       const updatedMessages = [...messages, newMsg];
@@ -117,7 +117,7 @@ const Messages = () => {
     setTimeout(() => {
       setMessages(prev => {
         const updated = prev.map(msg => 
-          msg.id === newMsg.id ? {...msg, status: 'delivered'} : msg
+          msg.id === newMsg.id ? {...msg, status: 'delivered' as const} : msg
         );
         
         // Update conversations data with status change
@@ -132,7 +132,7 @@ const Messages = () => {
       setTimeout(() => {
         setMessages(prev => {
           const updated = prev.map(msg => 
-            msg.id === newMsg.id ? {...msg, status: 'read'} : msg
+            msg.id === newMsg.id ? {...msg, status: 'read' as const} : msg
           );
           
           // Update conversations data with status change
