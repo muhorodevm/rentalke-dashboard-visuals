@@ -1,11 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Check, Clock, Smile } from 'lucide-react';
+import { Check, Clock, Smile, MoreVertical, Edit, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 interface MessageItemProps {
   message: {
@@ -22,11 +41,61 @@ interface MessageItemProps {
     avatar: string;
   };
   onAddReaction: (emoji: string) => void;
+  onDeleteMessage?: (messageId: string) => void;
+  onEditMessage?: (messageId: string, newText: string) => void;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, contact, onAddReaction }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ 
+  message, 
+  contact, 
+  onAddReaction, 
+  onDeleteMessage, 
+  onEditMessage 
+}) => {
   const isMe = message.sender === 'me';
   const [showReactions, setShowReactions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(message.text);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    if (isEditing && editInputRef.current) {
+      editInputRef.current.focus();
+      // Position cursor at the end of text
+      editInputRef.current.selectionStart = editInputRef.current.value.length;
+    }
+  }, [isEditing]);
+
+  const handleEditSubmit = () => {
+    if (!editText.trim()) {
+      toast({
+        title: "Error",
+        description: "Message cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (editText !== message.text && onEditMessage) {
+      onEditMessage(message.id, editText);
+      toast({
+        description: "Message updated successfully",
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleDeleteMessage = () => {
+    if (onDeleteMessage) {
+      onDeleteMessage(message.id);
+      setShowDeleteDialog(false);
+      toast({
+        description: "Message deleted successfully",
+      });
+    }
+  };
   
   const renderMessageStatus = () => {
     switch (message.status) {
@@ -69,14 +138,84 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, contact, onAddReacti
         <div className="flex items-end gap-2">
           <div
             className={cn(
-              "rounded-2xl p-3 relative group shadow-sm",
+              "rounded-2xl p-3 relative group",
               isMe 
                 ? "bg-primary text-primary-foreground rounded-br-none" 
                 : "bg-card border rounded-bl-none"
             )}
-            onDoubleClick={() => setShowReactions(!showReactions)}
           >
-            <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+            {isEditing ? (
+              <div className="min-w-[200px]">
+                <Textarea
+                  ref={editInputRef}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="min-h-[60px] mb-2 p-1 text-sm border bg-background text-foreground"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleEditSubmit();
+                    }
+                    if (e.key === 'Escape') {
+                      setIsEditing(false);
+                      setEditText(message.text);
+                    }
+                  }}
+                />
+                <div className="flex justify-end gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditText(message.text);
+                    }}
+                    className="h-6 px-2"
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Cancel
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={handleEditSubmit}
+                    className="h-6 px-2"
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+            )}
+            
+            {isMe && !isEditing && (
+              <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full bg-background border shadow-sm hover:bg-muted">
+                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32">
+                    <DropdownMenuItem 
+                      onClick={() => setIsEditing(true)}
+                      className="cursor-pointer"
+                    >
+                      <Edit className="h-3.5 w-3.5 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="cursor-pointer text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
             
             <Popover open={showReactions} onOpenChange={setShowReactions}>
               <PopoverTrigger asChild>
@@ -122,6 +261,23 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, contact, onAddReacti
           </div>
         )}
       </div>
+      
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Message</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this message? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMessage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };

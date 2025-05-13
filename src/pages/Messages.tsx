@@ -15,6 +15,7 @@ import ConversationView from '@/components/messages/ConversationView';
 import NewConversationDialog from '@/components/messages/NewConversationDialog';
 import { mockContacts, mockConversations, Contact, Message } from '@/data/mockMessagesData';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { useScrollToTop } from '@/hooks/useScrollToTop';
 
 const Messages = () => {
   const { toast } = useToast();
@@ -28,6 +29,10 @@ const Messages = () => {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [showConversation, setShowConversation] = useState(!isMobile);
   const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
+  const [conversationsData, setConversationsData] = useState({...mockConversations});
+  
+  // Use scroll to top hook for proper navigation
+  useScrollToTop();
   
   const filteredContacts = mockContacts.filter(contact => {
     const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -51,7 +56,8 @@ const Messages = () => {
     if (selectedContact) {
       setLoading(true);
       setTimeout(() => {
-        setMessages(mockConversations[selectedContact.id] || []);
+        const currentConversation = conversationsData[selectedContact.id] || [];
+        setMessages(currentConversation);
         setLoading(false);
         
         if (selectedContact.id === '1') {
@@ -65,18 +71,26 @@ const Messages = () => {
         }
       }, 800);
     }
-  }, [selectedContact]);
+  }, [selectedContact, conversationsData]);
 
   const addNewIncomingMessage = () => {
     if (selectedContact && selectedContact.id === '1') {
       const newMsg = {
-        id: `m${messages.length + 1}`,
+        id: `m${Date.now()}`,
         sender: '1',
         text: "Thanks for the information! I'll make the payment today.",
-        time: '10:40 AM',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         status: 'received' as const
       };
-      setMessages([...messages, newMsg]);
+      
+      const updatedMessages = [...messages, newMsg];
+      setMessages(updatedMessages);
+      
+      // Update the conversations data
+      setConversationsData(prev => ({
+        ...prev,
+        [selectedContact.id]: updatedMessages
+      }));
     }
   };
 
@@ -84,28 +98,51 @@ const Messages = () => {
     if (!messageText.trim() || !selectedContact) return;
     
     const newMsg: Message = {
-      id: `m${messages.length + 1}`,
+      id: `m${Date.now()}`,
       sender: 'me',
       text: messageText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'sent'
     };
     
-    setMessages([...messages, newMsg]);
+    const updatedMessages = [...messages, newMsg];
+    setMessages(updatedMessages);
+    
+    // Update conversations data
+    setConversationsData(prev => ({
+      ...prev,
+      [selectedContact.id]: updatedMessages
+    }));
     
     setTimeout(() => {
-      setMessages(prev => 
-        prev.map(msg => 
+      setMessages(prev => {
+        const updated = prev.map(msg => 
           msg.id === newMsg.id ? {...msg, status: 'delivered'} : msg
-        )
-      );
+        );
+        
+        // Update conversations data with status change
+        setConversationsData(prevData => ({
+          ...prevData,
+          [selectedContact.id]: updated
+        }));
+        
+        return updated;
+      });
       
       setTimeout(() => {
-        setMessages(prev => 
-          prev.map(msg => 
+        setMessages(prev => {
+          const updated = prev.map(msg => 
             msg.id === newMsg.id ? {...msg, status: 'read'} : msg
-          )
-        );
+          );
+          
+          // Update conversations data with status change
+          setConversationsData(prevData => ({
+            ...prevData,
+            [selectedContact.id]: updated
+          }));
+          
+          return updated;
+        });
       }, 1000);
     }, 1000);
     
@@ -125,27 +162,78 @@ const Messages = () => {
           const randomResponse = responses[Math.floor(Math.random() * responses.length)];
           
           const responseMsg: Message = {
-            id: `m${messages.length + 2}`,
+            id: `m${Date.now()}`,
             sender: selectedContact.id,
             text: randomResponse,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: 'received'
           };
           
-          setMessages(prev => [...prev, responseMsg]);
+          const withResponse = [...updatedMessages, responseMsg];
+          setMessages(withResponse);
+          
+          // Update conversations data with new response
+          setConversationsData(prev => ({
+            ...prev,
+            [selectedContact.id]: withResponse
+          }));
         }, 2000 + Math.random() * 1000);
       }, 1000);
     }
   };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
-    setMessages(prev => 
-      prev.map(msg => 
+    setMessages(prev => {
+      const updated = prev.map(msg => 
         msg.id === messageId 
           ? {...msg, reactions: [...(msg.reactions || []), emoji]} 
           : msg
-      )
-    );
+      );
+      
+      // Update conversations data with reaction
+      if (selectedContact) {
+        setConversationsData(prevData => ({
+          ...prevData,
+          [selectedContact.id]: updated
+        }));
+      }
+      
+      return updated;
+    });
+  };
+  
+  const handleEditMessage = (messageId: string, newText: string) => {
+    setMessages(prev => {
+      const updated = prev.map(msg => 
+        msg.id === messageId ? {...msg, text: newText} : msg
+      );
+      
+      // Update conversations data with edit
+      if (selectedContact) {
+        setConversationsData(prevData => ({
+          ...prevData,
+          [selectedContact.id]: updated
+        }));
+      }
+      
+      return updated;
+    });
+  };
+  
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages(prev => {
+      const updated = prev.filter(msg => msg.id !== messageId);
+      
+      // Update conversations data after deletion
+      if (selectedContact) {
+        setConversationsData(prevData => ({
+          ...prevData,
+          [selectedContact.id]: updated
+        }));
+      }
+      
+      return updated;
+    });
   };
 
   const handleBackToContactsList = () => {
@@ -174,7 +262,7 @@ const Messages = () => {
       </div>
 
       <Card className="border rounded-xl overflow-hidden shadow-sm bg-gradient-to-b from-background to-card">
-        <div className="grid grid-cols-1 md:grid-cols-3 h-[calc(80vh-13rem)]">
+        <div className="grid grid-cols-1 md:grid-cols-3 h-[calc(80vh-13rem)] overflow-hidden">
           {/* Contacts List - Hidden on mobile when conversation is shown */}
           <AnimatePresence mode="wait">
             {(!isMobile || !showConversation) && (
@@ -186,7 +274,7 @@ const Messages = () => {
                 transition={{ duration: 0.3 }}
                 className="md:col-span-1 border-r h-full flex flex-col"
               >
-                <div className="p-4 border-b">
+                <div className="p-4 border-b bg-card/60 sticky top-0 z-10">
                   <div className="relative mb-3">
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -206,7 +294,7 @@ const Messages = () => {
                   </Tabs>
                 </div>
                 
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 h-full">
                   <ContactsList 
                     contacts={filteredContacts}
                     selectedContact={selectedContact}
@@ -220,7 +308,7 @@ const Messages = () => {
                   )}
                 </ScrollArea>
                 
-                <div className="p-3 border-t bg-card/50">
+                <div className="p-3 border-t bg-card/50 sticky bottom-0">
                   <Button className="w-full" onClick={handleNewConversation}>
                     <Plus className="h-4 w-4 mr-2" />
                     New Conversation
@@ -239,7 +327,7 @@ const Messages = () => {
                 animate={isMobile ? { x: 0, opacity: 1 } : { opacity: 1 }}
                 exit={isMobile ? { x: 300, opacity: 0 } : { opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="md:col-span-2 flex flex-col h-full"
+                className="md:col-span-2 flex flex-col h-full overflow-hidden"
               >
                 {selectedContact ? (
                   <ConversationView 
@@ -249,6 +337,8 @@ const Messages = () => {
                     loading={loading}
                     onSendMessage={handleSendMessage}
                     onAddReaction={handleAddReaction}
+                    onEditMessage={handleEditMessage}
+                    onDeleteMessage={handleDeleteMessage}
                     onBack={handleBackToContactsList}
                     isMobile={isMobile}
                   />
