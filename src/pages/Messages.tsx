@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2, ArrowLeft, Search, Plus, ChevronLeft } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,11 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/messages/EmptyState';
-import MessageItem from '@/components/messages/MessageItem';
 import ContactsList from '@/components/messages/ContactsList';
-import ConversationHeader from '@/components/messages/ConversationHeader';
-import TypingIndicator from '@/components/messages/TypingIndicator';
-import MessageComposer from '@/components/messages/MessageComposer';
+import ConversationView from '@/components/messages/ConversationView';
+import NewConversationDialog from '@/components/messages/NewConversationDialog';
 import { mockContacts, mockConversations, Contact, Message } from '@/data/mockMessagesData';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -27,12 +25,13 @@ const Messages = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [showConversation, setShowConversation] = useState(!isMobile);
+  const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
   
   const filteredContacts = mockContacts.filter(contact => {
-    const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = contact.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         contact.role.toLowerCase().includes(searchQuery.toLowerCase());
     if (activeTab === 'all') return matchesSearch;
     if (activeTab === 'unread') return matchesSearch && contact.unread && contact.unread > 0;
     if (activeTab === 'online') return matchesSearch && contact.status === 'online';
@@ -62,15 +61,11 @@ const Messages = () => {
               setIsTyping(false);
               addNewIncomingMessage();
             }, 3000);
-          }, 5000);
+          }, 2000);
         }
       }, 800);
     }
   }, [selectedContact]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   const addNewIncomingMessage = () => {
     if (selectedContact && selectedContact.id === '1') {
@@ -113,6 +108,34 @@ const Messages = () => {
         );
       }, 1000);
     }, 1000);
+    
+    // Simulate typing response for certain contacts
+    if (['1', '4', '6'].includes(selectedContact.id)) {
+      setTimeout(() => {
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsTyping(false);
+          const responses = [
+            "Got it! Thanks for letting me know.",
+            "I understand, I'll take care of it.",
+            "Thank you for your quick response!",
+            "Perfect, that works for me.",
+            "I'll check and get back to you soon."
+          ];
+          const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+          
+          const responseMsg: Message = {
+            id: `m${messages.length + 2}`,
+            sender: selectedContact.id,
+            text: randomResponse,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'received'
+          };
+          
+          setMessages(prev => [...prev, responseMsg]);
+        }, 2000 + Math.random() * 1000);
+      }, 1000);
+    }
   };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
@@ -130,12 +153,23 @@ const Messages = () => {
     setShowConversation(false);
   };
 
+  const handleNewConversation = () => {
+    setShowNewConversationDialog(true);
+  };
+
+  const handleSelectNewContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    if (isMobile) {
+      setShowConversation(true);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
         <p className="text-muted-foreground mt-1">
-          Communicate with your team and tenants.
+          Communicate with your team and tenants
         </p>
       </div>
 
@@ -176,10 +210,7 @@ const Messages = () => {
                   <ContactsList 
                     contacts={filteredContacts}
                     selectedContact={selectedContact}
-                    onSelectContact={(contact) => {
-                      setSelectedContact(contact);
-                      if (isMobile) setShowConversation(true);
-                    }}
+                    onSelectContact={handleSelectNewContact}
                   />
                   
                   {filteredContacts.length === 0 && (
@@ -190,10 +221,7 @@ const Messages = () => {
                 </ScrollArea>
                 
                 <div className="p-3 border-t bg-card/50">
-                  <Button className="w-full" onClick={() => toast({
-                    title: "Coming soon!",
-                    description: "This feature is under development."
-                  })}>
+                  <Button className="w-full" onClick={handleNewConversation}>
                     <Plus className="h-4 w-4 mr-2" />
                     New Conversation
                   </Button>
@@ -214,71 +242,31 @@ const Messages = () => {
                 className="md:col-span-2 flex flex-col h-full"
               >
                 {selectedContact ? (
-                  <>
-                    <div className="flex items-center border-b p-3">
-                      {isMobile && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={handleBackToContactsList}
-                          className="mr-2"
-                        >
-                          <ChevronLeft className="h-5 w-5" />
-                        </Button>
-                      )}
-                      <ConversationHeader contact={selectedContact} />
-                    </div>
-                    
-                    <ScrollArea className="flex-1 px-4 py-3 bg-gradient-to-b from-background/50 to-card/50">
-                      {loading ? (
-                        <div className="flex justify-center items-center h-full">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                      ) : messages.length > 0 ? (
-                        <div className="space-y-6">
-                          <AnimatePresence>
-                            {messages.map((message) => (
-                              <MessageItem 
-                                key={message.id}
-                                message={message}
-                                contact={selectedContact}
-                                onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
-                              />
-                            ))}
-                          </AnimatePresence>
-                          
-                          {isTyping && <TypingIndicator contactName={selectedContact.name} />}
-                          <div ref={messagesEndRef} />
-                        </div>
-                      ) : (
-                        <div className="flex justify-center items-center h-full">
-                          <div className="text-center">
-                            <p className="text-muted-foreground">No messages yet</p>
-                            <p className="text-sm text-muted-foreground mt-1">Send a message to start the conversation</p>
-                          </div>
-                        </div>
-                      )}
-                    </ScrollArea>
-                    
-                    <MessageComposer onSendMessage={handleSendMessage} />
-                  </>
+                  <ConversationView 
+                    contact={selectedContact}
+                    messages={messages}
+                    isTyping={isTyping}
+                    loading={loading}
+                    onSendMessage={handleSendMessage}
+                    onAddReaction={handleAddReaction}
+                    onBack={handleBackToContactsList}
+                    isMobile={isMobile}
+                  />
                 ) : (
-                  <EmptyState onNewConversation={() => {
-                    if (filteredContacts.length > 0) {
-                      setSelectedContact(filteredContacts[0]);
-                    } else {
-                      toast({
-                        title: "No contacts available",
-                        description: "Please add contacts to start a conversation."
-                      });
-                    }
-                  }} />
+                  <EmptyState onNewConversation={handleNewConversation} />
                 )}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </Card>
+
+      <NewConversationDialog 
+        open={showNewConversationDialog}
+        onClose={() => setShowNewConversationDialog(false)}
+        contacts={mockContacts}
+        onSelectContact={handleSelectNewContact}
+      />
     </div>
   );
 };
