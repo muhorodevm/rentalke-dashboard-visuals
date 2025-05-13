@@ -16,6 +16,7 @@ import NewConversationDialog from '@/components/messages/NewConversationDialog';
 import { mockContacts, mockConversations, Contact, Message } from '@/data/mockMessagesData';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useScrollToTop } from '@/hooks/useScrollToTop';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Messages = () => {
   const { toast } = useToast();
@@ -25,8 +26,7 @@ const Messages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useIsMobile();
   const [showConversation, setShowConversation] = useState(!isMobile);
   const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
   const [conversationsData, setConversationsData] = useState({...mockConversations});
@@ -52,6 +52,7 @@ const Messages = () => {
     }
   }, [isMobile, selectedContact]);
 
+  // Load conversation data when contact is selected
   useEffect(() => {
     if (selectedContact) {
       setLoading(true);
@@ -59,40 +60,9 @@ const Messages = () => {
         const currentConversation = conversationsData[selectedContact.id] || [];
         setMessages(currentConversation);
         setLoading(false);
-        
-        if (selectedContact.id === '1') {
-          setTimeout(() => {
-            setIsTyping(true);
-            setTimeout(() => {
-              setIsTyping(false);
-              addNewIncomingMessage();
-            }, 3000);
-          }, 2000);
-        }
-      }, 800);
+      }, 300);
     }
   }, [selectedContact, conversationsData]);
-
-  const addNewIncomingMessage = () => {
-    if (selectedContact && selectedContact.id === '1') {
-      const newMsg: Message = {
-        id: `m${Date.now()}`,
-        sender: '1',
-        text: "Thanks for the information! I'll make the payment today.",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'received'
-      };
-      
-      const updatedMessages = [...messages, newMsg];
-      setMessages(updatedMessages);
-      
-      // Update the conversations data
-      setConversationsData(prev => ({
-        ...prev,
-        [selectedContact.id]: updatedMessages
-      }));
-    }
-  };
 
   const handleSendMessage = (messageText: string) => {
     if (!messageText.trim() || !selectedContact) return;
@@ -114,13 +84,13 @@ const Messages = () => {
       [selectedContact.id]: updatedMessages
     }));
     
+    // Update message status to delivered and then read after a delay
     setTimeout(() => {
       setMessages(prev => {
         const updated = prev.map(msg => 
           msg.id === newMsg.id ? {...msg, status: 'delivered' as const} : msg
         );
         
-        // Update conversations data with status change
         setConversationsData(prevData => ({
           ...prevData,
           [selectedContact.id]: updated
@@ -128,58 +98,7 @@ const Messages = () => {
         
         return updated;
       });
-      
-      setTimeout(() => {
-        setMessages(prev => {
-          const updated = prev.map(msg => 
-            msg.id === newMsg.id ? {...msg, status: 'read' as const} : msg
-          );
-          
-          // Update conversations data with status change
-          setConversationsData(prevData => ({
-            ...prevData,
-            [selectedContact.id]: updated
-          }));
-          
-          return updated;
-        });
-      }, 1000);
     }, 1000);
-    
-    // Simulate typing response for certain contacts
-    if (['1', '4', '6'].includes(selectedContact.id)) {
-      setTimeout(() => {
-        setIsTyping(true);
-        setTimeout(() => {
-          setIsTyping(false);
-          const responses = [
-            "Got it! Thanks for letting me know.",
-            "I understand, I'll take care of it.",
-            "Thank you for your quick response!",
-            "Perfect, that works for me.",
-            "I'll check and get back to you soon."
-          ];
-          const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-          
-          const responseMsg: Message = {
-            id: `m${Date.now()}`,
-            sender: selectedContact.id,
-            text: randomResponse,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'received'
-          };
-          
-          const withResponse = [...updatedMessages, responseMsg];
-          setMessages(withResponse);
-          
-          // Update conversations data with new response
-          setConversationsData(prev => ({
-            ...prev,
-            [selectedContact.id]: withResponse
-          }));
-        }, 2000 + Math.random() * 1000);
-      }, 1000);
-    }
   };
 
   const handleAddReaction = (messageId: string, emoji: string) => {
@@ -261,8 +180,8 @@ const Messages = () => {
         </p>
       </div>
 
-      <Card className="border rounded-xl overflow-hidden shadow-sm bg-gradient-to-b from-background to-card">
-        <div className="grid grid-cols-1 md:grid-cols-3 h-[calc(80vh-13rem)] overflow-hidden">
+      <Card className="border rounded-xl overflow-hidden shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 h-[calc(85vh-10rem)]">
           {/* Contacts List - Hidden on mobile when conversation is shown */}
           <AnimatePresence mode="wait">
             {(!isMobile || !showConversation) && (
@@ -333,7 +252,6 @@ const Messages = () => {
                   <ConversationView 
                     contact={selectedContact}
                     messages={messages}
-                    isTyping={isTyping}
                     loading={loading}
                     onSendMessage={handleSendMessage}
                     onAddReaction={handleAddReaction}
